@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>超级大乐透数据分析系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #f5f7fa; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding: 2rem 0; border-radius:0 0 20px 20px; }
+        .card { border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .nav-tabs { border-bottom: 2px solid #667eea; }
+        .nav-tabs .nav-link.active { border-color: #667eea #667eea #fff; font-weight: bold; color: #667eea; }
+        .result-box { min-height: 300px; }
+        /* 固定图表高度，彻底解决刷新缩小问题 */
+        .chart-box { height: 320px !important; margin-bottom: 20px; }
+        canvas { width: 100% !important; height: 100% !important; }
+    </style>
+</head>
+<body>
+<!-- 顶部标题 -->
+<div class="hero text-center mb-4">
+    <h2><i class="fa fa-trophy"></i> 超级大乐透数据分析平台</h2>
+    <p class="mb-0">单页面集成 | 数据查询 | 可视化统计</p>
+</div>
+
+<div class="container pb-5">
+    <!-- 顶部仅保留：日期 + 刷新按钮 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center g-3">
+                <div class="col-md-10">
+                    <label class="form-label fw-bold">统计起始日期 (格式：YYYYMMDD)</label>
+                    <input type="text" id="date_str" class="form-control" value="20260101" placeholder="例如：20260101">
+                </div>
+                <div class="col-md-2">
+                    <button id="queryAll" class="btn btn-primary w-100 py-2">
+                        <i class="fa fa-refresh"></i> 刷新数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 标签页 -->
+    <ul class="nav nav-tabs nav-justified mb-4" id="myTab">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#data">开奖数据</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#count">号码频次</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#sum">和值&跨度</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#odd">奇偶/大小</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#range">区间分布</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- 1. 开奖数据：内置 每页显示条数 设置 -->
+        <div class="tab-pane fade show active" id="data">
+            <div class="card p-3 result-box">
+                <!-- 独立分页条数设置 -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">每页显示条数</label>
+                        <input type="number" id="page_size" class="form-control" value="20" min="5" max="50">
+                    </div>
+                </div>
+
+                <div id="loading_data" class="text-center d-none"><div class="spinner-border"></div><p>加载中...</p></div>
+                <div id="result_data" class="table-responsive"></div>
+                <nav id="pagination_nav" class="mt-3 d-flex justify-content-center"></nav>
+            </div>
+        </div>
+
+        <!-- 2. 号码频次（修复图表） -->
+        <div class="tab-pane fade" id="count">
+            <div class="card p-3 result-box">
+                <div id="loading_count" class="text-center d-none"><div class="spinner-border"></div><p>加载中...</p></div>
+                <div class="chart-box"><canvas id="frontChart"></canvas></div>
+                <div class="chart-box"><canvas id="backChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- 3. 和值&跨度（上下布局 + 固定高度） -->
+        <div class="tab-pane fade" id="sum">
+            <div class="card p-3 result-box">
+                <div id="loading_sum" class="text-center d-none"><div class="spinner-border"></div><p>加载中...</p></div>
+                <div class="chart-box"><canvas id="sumChart"></canvas></div>
+                <div class="chart-box"><canvas id="spanChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- 4. 奇偶/大小 -->
+        <div class="tab-pane fade" id="odd">
+            <div class="card p-3 result-box">
+                <div id="loading_odd" class="text-center d-none"><div class="spinner-border"></div><p>加载中...</p></div>
+                <div class="row">
+                    <div class="col-md-6 chart-box"><canvas id="oddEvenChart"></canvas></div>
+                    <div class="col-md-6 chart-box"><canvas id="bigSmallChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. 区间分布 -->
+        <div class="tab-pane fade" id="range">
+            <div class="card p-3 result-box">
+                <div id="loading_range" class="text-center d-none"><div class="spinner-border"></div><p>加载中...</p></div>
+                <div class="row">
+                    <div class="col-md-6 chart-box"><canvas id="rangeTotalChart"></canvas></div>
+                    <div class="col-md-6 chart-box"><canvas id="rangeComboChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ===================== 全局变量 =====================
+    let currentPage = 1;
+    // 所有图表实例
+    let sumChart,spanChart,oddEvenChart,bigSmallChart,rangeTotalChart,rangeComboChart,frontChart,backChart;
+
+    // ===================== 工具函数 =====================
+    function getDate() { return document.getElementById('date_str').value; }
+    function getPageSize() {
+        const size = parseInt(document.getElementById('page_size').value);
+        return isNaN(size) || size <5 || size>50 ? 20 : size;
+    }
+    function destroyChart(chart) { if(chart) chart.destroy(); }
+
+    // ===================== 1. 开奖数据 =====================
+    async function loadData(page = 1) {
+        currentPage = page;
+        const date = getDate();
+        const pageSize = getPageSize();
+        const dom = document.getElementById('result_data');
+        const load = document.getElementById('loading_data');
+        const pagination = document.getElementById('pagination_nav');
+
+        load.classList.remove('d-none');
+        dom.innerHTML = ''; pagination.innerHTML = '';
+
+        try {
+            const res = await fetch(`/super_lottery/get/${date}?pages=${page}&number=${pageSize}`);
+            const data = await res.json();
+            let html = `<table class="table table-striped"><thead><tr>
+                <th>期数</th><th>前区1</th><th>前区2</th><th>前区3</th><th>前区4</th><th>前区5</th>
+                <th>后区1</th><th>后区2</th><th>开奖日期</th></tr></thead><tbody>`;
+
+            data.data.forEach(item => {
+                html += `<tr>
+                    <td>${item.issue}</td>
+                    <td>${item.front1}</td><td>${item.front2}</td><td>${item.front3}</td><td>${item.front4}</td><td>${item.front5}</td>
+                    <td class="text-danger">${item.back1}</td><td class="text-danger">${item.back2}</td>
+                    <td>${item.draw_date}</td></tr>`;
+            });
+            html += `</tbody></table><p class="text-center">总期数：${data.total_items} | 总页数：${data.total_pages} | 每页：${pageSize}条</p>`;
+            dom.innerHTML = html;
+            renderPagination(data.total_pages, page);
+        } catch (e) {
+            dom.innerHTML = '<div class="alert alert-danger">数据加载失败</div>';
+        } finally {
+            load.classList.add('d-none');
+        }
+    }
+
+    function renderPagination(totalPages, currentPage) {
+        const pagination = document.getElementById('pagination_nav');
+        if(totalPages <=1) return;
+        let html = '<ul class="pagination">';
+        html += `<li class="page-item ${currentPage===1?'disabled':''}"><a class="page-link" onclick="loadData(${currentPage-1})">上一页</a></li>`;
+        for(let i=1;i<=totalPages;i++){
+            html += `<li class="page-item ${i===currentPage?'active':''}"><a class="page-link" onclick="loadData(${i})">${i}</a></li>`;
+        }
+        html += `<li class="page-item ${currentPage===totalPages?'disabled':''}"><a class="page-link" onclick="loadData(${currentPage+1})">下一页</a></li>`;
+        pagination.innerHTML = html;
+    }
+
+    // ===================== 2. 号码频次（彻底修复图表） =====================
+    async function loadCount() {
+        const date = getDate();
+        const load = document.getElementById('loading_count');
+        load.classList.remove('d-none');
+        destroyChart(frontChart); destroyChart(backChart);
+
+        try {
+            const res = await fetch(`/super_lottery/count_lottery_numbers/${date}`);
+            const data = await res.json();
+            const total = data.total_draws;
+
+            // 前区图表
+            const frontPos = ["front1","front2","front3","front4","front5"];
+            const frontLabels = Object.keys(data.number_counts.front1 || {});
+            frontChart = new Chart(document.getElementById('frontChart'),{
+                type:'bar',
+                data:{
+                    labels: frontLabels,
+                    datasets: frontPos.map((pos,idx)=>({
+                        label:pos,
+                        data:Object.values(data.number_counts[pos]||{}),
+                        backgroundColor:['#0d6efd','#20c997','#ffc107','#fd7e14','#6f42c1'][idx]
+                    }))
+                },
+                options:{
+                    responsive:true, maintainAspectRatio:false,
+                    plugins:{title:{display:true,text:`前区号码频次 | 总期数：${total} | 日期：${date}`}},
+                    scales:{x:{title:{display:true,text:'号码'}},y:{title:{display:true,text:'次数'},beginAtZero:true}}
+                }
+            });
+
+            // 后区图表
+            const backPos = ["back1","back2"];
+            const backLabels = Object.keys(data.number_counts.back1 || {});
+            backChart = new Chart(document.getElementById('backChart'),{
+                type:'bar',
+                data:{
+                    labels: backLabels,
+                    datasets: backPos.map((pos,idx)=>({
+                        label:pos,
+                        data:Object.values(data.number_counts[pos]||{}),
+                        backgroundColor:idx===0?'#dc3545':'#198754'
+                    }))
+                },
+                options:{
+                    responsive:true, maintainAspectRatio:false,
+                    plugins:{title:{display:true,text:`后区号码频次 | 总期数：${total} | 日期：${date}`}},
+                    scales:{x:{title:{display:true,text:'号码'}},y:{title:{display:true,text:'次数'},beginAtZero:true}}
+                }
+            });
+        } catch (e) { console.error('频次图表错误',e); }
+        finally { load.classList.add('d-none'); }
+    }
+
+    // ===================== 3. 和值&跨度（固定高度） =====================
+    async function loadSumSpan() {
+        const date = getDate();
+        const load = document.getElementById('loading_sum');
+        load.classList.remove('d-none');
+        destroyChart(sumChart); destroyChart(spanChart);
+
+        try {
+            const res = await fetch(`/super_lottery/calculate_sum_span_statistics/${date}`);
+            const data = await res.json();
+
+            sumChart = new Chart(document.getElementById('sumChart'),{
+                type:'bar',
+                data:{
+                    labels:Object.keys(data.sum_statistics.sum_frequency),
+                    datasets:[{label:'和值频次',data:Object.values(data.sum_statistics.sum_frequency),backgroundColor:'#ffc107'}]
+                },
+                options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'和值频次统计'}}}
+            });
+
+            spanChart = new Chart(document.getElementById('spanChart'),{
+                type:'bar',
+                data:{
+                    labels:Object.keys(data.span_statistics.span_frequency),
+                    datasets:[{label:'跨度频次',data:Object.values(data.span_statistics.span_frequency),backgroundColor:'#fd7e14'}]
+                },
+                options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'跨度频次统计'}}}
+            });
+        } catch (e) { console.error(e); }
+        finally { load.classList.add('d-none'); }
+    }
+
+    // ===================== 4. 奇偶大小 =====================
+    async function loadOddEven() {
+        const date = getDate();
+        const load = document.getElementById('loading_odd');
+        load.classList.remove('d-none');
+        destroyChart(oddEvenChart); destroyChart(bigSmallChart);
+
+        try {
+            const res = await fetch(`/super_lottery/calculate_odd_even_big_small/${date}`);
+            const data = await res.json();
+            const result = data.data;
+
+            oddEvenChart = new Chart(document.getElementById('oddEvenChart'),{
+                type:'pie',
+                data:{labels:Object.keys(result.odd_even_distribution),datasets:[{data:Object.values(result.odd_even_distribution),backgroundColor:['#0d6efd','#20c997','#ffc107','#dc3545']}]},
+                options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'奇偶分布'}}}
+            });
+
+            bigSmallChart = new Chart(document.getElementById('bigSmallChart'),{
+                type:'pie',
+                data:{labels:Object.keys(result.big_small_distribution),datasets:[{data:Object.values(result.big_small_distribution),backgroundColor:['#0d6efd','#20c997','#ffc107','#dc3545']}]},
+                options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'大小分布'}}}
+            });
+        } catch (e) {}
+        finally { load.classList.add('d-none'); }
+    }
+
+    // ===================== 5. 区间分布 =====================
+    async function loadRange() {
+        const date = getDate();
+        const load = document.getElementById('loading_range');
+        load.classList.remove('d-none');
+        destroyChart(rangeTotalChart); destroyChart(rangeComboChart);
+
+        try {
+            const res = await fetch(`/super_lottery/calculate_range_distribution/${date}`);
+            const data = await res.json();
+            const result = data.data;
+
+            rangeTotalChart = new Chart(document.getElementById('rangeTotalChart'),{
+                type:'doughnut',
+                data:{labels:['一区(1-11)','二区(12-22)','三区(23-35)'],datasets:[{data:[result.total_numbers_in_range.range1_total,result.total_numbers_in_range.range2_total,result.total_numbers_in_range.range3_total],backgroundColor:['#0d6efd','#20c997','#ffc107']}]},
+                options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'区间总出号'}}}
+            });
+
+            rangeComboChart = new Chart(document.getElementById('rangeComboChart'),{
+                type:'bar',
+                data:{labels:Object.keys(result.range_combination_frequency).slice(0,10),datasets:[{data:Object.values(result.range_combination_frequency).slice(0,10),backgroundColor:'#6f42c1'}]},
+                options:{responsive:true,maintainAspectRatio:false,plugins:{title:{display:true,text:'区间组合Top10'}}}
+            });
+        } catch (e) {}
+        finally { load.classList.add('d-none'); }
+    }
+
+    // ===================== 刷新 =====================
+    document.getElementById('queryAll').addEventListener('click',()=>{
+        loadData(1); loadCount(); loadSumSpan(); loadOddEven(); loadRange();
+    });
+    window.onload = () => loadData(1);
+</script>
+</body>
+</html>
