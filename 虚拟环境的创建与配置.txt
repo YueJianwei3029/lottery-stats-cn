@@ -31,6 +31,10 @@ my_data_17500/               # 项目根目录
 │   └── __init__.py          # 空文件，标记dao为Python包
 │   └──
 │   └──
+├── crud/                     # Dao层：数据访问层，专门做数据库增删改查操作
+│   └── __init__.py          # 空文件，标记dao为Python包
+│   └──
+│   └──
 ├── api/                     # 路由层（子路由）：拆分接口，避免所有接口写在main.py
 │   └── __init__.py          # 空文件，标记api为Python包
 │   └── super_lottery.py     # super_lottery子路由
