@@ -1,0 +1,52 @@
+# # 在当前目录下创建名为 ".venv" 的虚拟环境
+python -m venv .venv
+
+# # 激活当前虚拟环境（Windows）
+.venv\Scripts\activate
+
+# # 激活当前虚拟环境（Mac/Linux）
+# source myenv/bin/activate
+
+# # 退出当前虚拟环境
+deactivate
+
+# 得到当前环境里所有的依赖
+pip freeze > requirements.txt
+
+# 不推荐
+# # 安装pipreqs
+# pip install pipreqs
+# # 生成 requirements.txt：（注意：在项目根目录运行）
+# pipreqs . --encoding=utf-8
+
+
+my_data_17500/               # 项目根目录
+├── main.py                  # 项目初始化入口（核心！配置数据库连接、启动FastAPI服务）
+├── scheme/                  # pydantic模型层：定义请求模型、响应模型
+├── model/                   # Model层：定义MySQL表结构（所有表的模型都放在这里）
+│   └── __init__.py          # 空文件，标记models为Python包
+│   └── super_lottery.py     # super_lottery表模型
+│   └──
+├── dao/                     # Dao层：数据访问层，专门做数据库增删改查操作
+│   └── __init__.py          # 空文件，标记dao为Python包
+│   └──
+│   └──
+├── api/                     # 路由层（子路由）：拆分接口，避免所有接口写在main.py
+│   └── __init__.py          # 空文件，标记api为Python包
+│   └── super_lottery.py     # super_lottery子路由
+│   └──
+└── database.py              # 数据库配置文件：存储数据库连接信息、提供会话
+
+技术栈
+pip install fastapi uvicorn -i https://mirrors.aliyun.com/pypi/simple/
+pip install sqlalchemy pymysql -i  https://mirrors.aliyun.com/pypi/simple/
+pip install asyncmy -i  https://mirrors.aliyun.com/pypi/simple/
+pip install requests -i  https://mirrors.aliyun.com/pypi/simple/
+pip install numpy -i  https://mirrors.aliyun.com/pypi/simple/
+pip install openai -i  https://mirrors.aliyun.com/pypi/simple/
+
+
+插件:
+trae
+lingma
+translation
