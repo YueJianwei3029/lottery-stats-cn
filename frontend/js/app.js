@@ -369,12 +369,12 @@ async function loadUnifiedExtend() {
                 const chart = echarts.init(dom);
                 chartInstances["extHeat"] = chart;
                 chart.setOption({
-                    title: { text: "位置×号码 热力图", left: "center", textStyle: { fontSize: 14 } },
+                    title: { text: "位置×号码 热力图", left: "center", top: 4, textStyle: { fontSize: 14 } },
                     tooltip: {},
-                    grid: { left: 60, right: 20, top: 50, bottom: 50 },
+                    grid: { left: 60, right: 20, top: 40, bottom: 55 },
                     xAxis: { type: "category", data: numRange.map(String), name: "号码" },
                     yAxis: { type: "category", data: labels, name: "位置" },
-                    visualMap: { min: 0, calculable: true, orient: "horizontal", left: "center", bottom: 0 },
+                    visualMap: { min: 0, calculable: true, orient: "horizontal", left: "center", bottom: 8 },
                     series: [{ type: "heatmap", data: heatData, label: { show: true } }],
                 });
             }
@@ -392,14 +392,14 @@ async function loadUnifiedExtend() {
                 const chart = echarts.init(dom);
                 chartInstances["extHotCold"] = chart;
                 chart.setOption({
-                    title: { text: "冷热号", left: "center", textStyle: { fontSize: 14 } },
+                    title: { text: "冷热号", left: "center", top: 4, textStyle: { fontSize: 14 } },
                     tooltip: {},
-                    legend: { data: ["热号", "冷号"] },
-                    grid: [{ left: "5%", top: 60, width: "40%" }, { left: "55%", top: 60, width: "40%" }],
+                    legend: { data: ["热号", "冷号"], top: 30 },
+                    grid: [{ left: "5%", top: 70, width: "40%" }, { left: "55%", top: 70, width: "40%" }],
                     xAxis: [{ gridIndex: 0, type: "value" }, { gridIndex: 1, type: "value", inverse: true }],
                     yAxis: [
-                        { gridIndex: 0, type: "category", data: hot.map(h => "号码" + h.number) },
-                        { gridIndex: 1, type: "category", data: cold.map(c => "号码" + c.number) },
+                        { gridIndex: 0, type: "category", data: hot.map(h => h.number) },
+                        { gridIndex: 1, type: "category", data: cold.map(c => c.number) },
                     ],
                     series: [
                         { name: "热号", type: "bar", data: hot.map(h => h.count), xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: "#e74c3c" } },
@@ -420,14 +420,15 @@ async function loadUnifiedExtend() {
                 const chart = echarts.init(dom);
                 chartInstances["extPeriod"] = chart;
                 chart.setOption({
-                    title: { text: "和值跨度走势", left: "center", textStyle: { fontSize: 14 } },
+                    title: { text: "和值跨度走势", left: "center", top: 4, textStyle: { fontSize: 14 } },
                     tooltip: { trigger: "axis" },
-                    legend: { data: ["和值", "跨度"] },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
+                    legend: { data: ["和值", "跨度"], top: 28 },
+                    grid: { left: 50, right: 20, top: 55, bottom: 40 },
+                    xAxis: { type: "category", data: recs.map(r => r.draw_num), axisLabel: { rotate: 45, fontSize: 10 } },
                     yAxis: { type: "value" },
                     series: [
-                        { name: "和值", type: "line", data: recs.map(r => r.sum_val) },
-                        { name: "跨度", type: "line", data: recs.map(r => r.span) },
+                        { name: "和值", type: "line", data: recs.map(r => r.sum_val), smooth: true },
+                        { name: "跨度", type: "line", data: recs.map(r => r.span), smooth: true },
                     ],
                 });
             }
@@ -444,14 +445,15 @@ async function loadUnifiedExtend() {
                 const chart = echarts.init(dom);
                 chartInstances["extRatio"] = chart;
                 chart.setOption({
-                    title: { text: "奇偶比/大小比趋势", left: "center", textStyle: { fontSize: 14 } },
+                    title: { text: "奇偶比/大小比趋势", left: "center", top: 4, textStyle: { fontSize: 14 } },
                     tooltip: { trigger: "axis" },
-                    legend: { data: ["奇偶比(奇)", "大小比(大)"] },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
+                    legend: { data: ["奇偶比(奇)", "大小比(大)"], top: 28 },
+                    grid: { left: 50, right: 20, top: 55, bottom: 40 },
+                    xAxis: { type: "category", data: recs.map(r => r.draw_num), axisLabel: { rotate: 45, fontSize: 10 } },
                     yAxis: { type: "value" },
                     series: [
-                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])) },
-                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])) },
+                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])), smooth: true },
+                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])), smooth: true },
                     ],
                 });
             }
