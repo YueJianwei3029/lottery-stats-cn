@@ -333,23 +333,14 @@ function disposeExtendCharts() {
 }
 
 async function loadExtendCharts() {
-    if (currentType === "lottery_dlt") {
-        await loadDltExtend();
-    } else if (currentType === "lottery_7xc") {
-        await loadQxcExtend();
-    } else if (currentType === "lottery_ssq") {
-        await loadSsqExtend();
-    } else if (currentType === "lottery_pl5") {
-        await loadPosExtend(5);
-    } else if (currentType === "lottery_pl3") {
-        await loadPosExtend(3);
-    }
+    await loadUnifiedExtend();
 }
 
-async function loadDltExtend() {
+// ========== 统一扩展统计（4图：热力图/冷热号/和值跨度/奇偶比） ==========
+async function loadUnifiedExtend() {
     const extCharts = document.getElementById("extendCharts");
     if (!extCharts) return;
-    ["extArea", "extZone", "extSum", "extSpan"].forEach(id => {
+    ["extHeat", "extHotCold", "extPeriod", "extRatio"].forEach(id => {
         const div = document.createElement("div");
         div.className = "chart-box";
         div.id = id;
@@ -358,114 +349,50 @@ async function loadDltExtend() {
 
     const dateParams = getDateParam();
 
+    // 1. 热力图
     try {
-        const r1 = await fetch(`${API_BASE}/lottery_dlt/stats/area${dateParams}`).then(r => r.json());
-        if (r1.data) {
-            const fa = r1.data.front_area || {};
-            renderChart("extArea", {
-                title: "前区/后区频率", type: "bar",
-                xData: Object.keys(fa), yData: Object.values(fa),
-                seriesName: "前区", xName: "号码", yName: "次",
-            });
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r2 = await fetch(`${API_BASE}/lottery_dlt/stats/zone${dateParams}`).then(r => r.json());
-        if (r2.data) {
-            const names = Object.keys(r2.data);
-            renderChart("extZone", {
-                title: "5区间分布", type: "bar",
-                xData: names.map(k => r2.data[k].range), yData: names.map(k => r2.data[k].count),
-                xName: "区间", yName: "次",
-            });
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r3 = await fetch(`${API_BASE}/lottery_dlt/stats/sum_span${dateParams}`).then(r => r.json());
-        if (r3.data) {
-            renderGauge("extSum", "前区和值", r3.data.sum_avg, r3.data.sum_min, r3.data.sum_max);
-            renderGauge("extSpan", "前区跨度", r3.data.span_avg, r3.data.span_min, r3.data.span_max);
-        }
-    } catch(e) { console.error(e); }
-}
-
-async function loadQxcExtend() {
-    const extCharts = document.getElementById("extendCharts");
-    if (!extCharts) return;
-    ["extPos", "extDigit", "extHotCold", "extRatio", "extRoad", "extTrend"].forEach(id => {
-        const div = document.createElement("div");
-        div.className = "chart-box";
-        div.id = id;
-        extCharts.appendChild(div);
-    });
-
-    const dateParams = getDateParam();
-
-    try {
-        const r1 = await fetch(`${API_BASE}/lottery_7xc/stats/position${dateParams}`).then(r => r.json());
-        if (r1.data) {
-            const positions = Object.keys(r1.data);
-            const numRange = [];
-            for (let n = 1; n <= 9; n++) numRange.push(n);
-            const extraNums = new Set();
-            positions.forEach(p => Object.keys(r1.data[p]).forEach(n => {
-                const v = parseInt(n);
-                if (v > 9 && (r1.data[p][n] || 0) > 5) extraNums.add(v);
-            }));
-            [...extraNums].sort((a, b) => a - b).forEach(n => numRange.push(n));
-
+        const r = await fetch(`${API_BASE}/${currentType}/stats/position${dateParams}`).then(r => r.json());
+        if (r.data) {
+            const positions = Object.keys(r.data);
+            const numSet = new Set();
+            positions.forEach(p => Object.keys(r.data[p]).forEach(n => numSet.add(parseInt(n))));
+            const numRange = Array.from(numSet).sort((a, b) => a - b);
             const heatData = [];
             positions.forEach((p, pi) => {
                 numRange.forEach((n, ni) => {
-                    heatData.push([ni, pi, r1.data[p][String(n)] || 0]);
+                    heatData.push([ni, pi, r.data[p][String(n)] || 0]);
                 });
             });
-
-            const dom = document.getElementById("extPos");
+            const labels = positions.map(p => p.replace("pos_", "位置"));
+            const dom = document.getElementById("extHeat");
             if (dom) {
                 const chart = echarts.init(dom);
-                chartInstances["extPos"] = chart;
+                chartInstances["extHeat"] = chart;
                 chart.setOption({
-                    title: { text: "各位置号码频率热力图" },
+                    title: { text: "位置×号码 热力图", left: "center", textStyle: { fontSize: 14 } },
                     tooltip: {},
                     grid: { left: 60, right: 20, top: 50, bottom: 50 },
                     xAxis: { type: "category", data: numRange.map(String), name: "号码" },
-                    yAxis: { type: "category", data: positions.map(p => p.replace("pos_", "位置")), name: "位置" },
+                    yAxis: { type: "category", data: labels, name: "位置" },
                     visualMap: { min: 0, calculable: true, orient: "horizontal", left: "center", bottom: 0 },
-                    series: [{
-                        type: "heatmap", data: heatData, label: { show: true },
-                        emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" } },
-                    }],
+                    series: [{ type: "heatmap", data: heatData, label: { show: true } }],
                 });
             }
         }
     } catch(e) { console.error(e); }
 
+    // 2. 冷热号
     try {
-        const r2 = await fetch(`${API_BASE}/lottery_7xc/stats/digit_freq${dateParams}`).then(r => r.json());
-        if (r2.data && r2.data.digit_freq) {
-            const d = r2.data.digit_freq;
-            renderChart("extDigit", {
-                title: "0-9数字频率", type: "bar",
-                xData: Object.keys(d), yData: Object.values(d),
-                xName: "数字", yName: "次",
-            });
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r3 = await fetch(`${API_BASE}/lottery_7xc/stats/hot_cold${dateParams}`).then(r => r.json());
-        if (r3.data) {
-            const hot = (r3.data.hot || []).reverse();
-            const cold = (r3.data.cold || []).reverse();
+        const r = await fetch(`${API_BASE}/${currentType}/stats/hot_cold${dateParams}`).then(r => r.json());
+        if (r.data) {
+            const hot = (r.data.hot || []).reverse();
+            const cold = (r.data.cold || []).reverse();
             const dom = document.getElementById("extHotCold");
             if (dom) {
                 const chart = echarts.init(dom);
                 chartInstances["extHotCold"] = chart;
                 chart.setOption({
-                    title: { text: "冷热号 Top5" },
+                    title: { text: "冷热号", left: "center", textStyle: { fontSize: 14 } },
                     tooltip: {},
                     legend: { data: ["热号", "冷号"] },
                     grid: [{ left: "5%", top: 60, width: "40%" }, { left: "55%", top: 60, width: "40%" }],
@@ -483,286 +410,17 @@ async function loadQxcExtend() {
         }
     } catch(e) { console.error(e); }
 
+    // 3. 和值跨度走势
     try {
-        const r4 = await fetch(`${API_BASE}/lottery_7xc/stats/ratio${dateParams}`).then(r => r.json());
-        if (r4.data && r4.data.records) {
-            const recs = r4.data.records.slice(0, 50).reverse();
-            const dom = document.getElementById("extRatio");
+        const r = await fetch(`${API_BASE}/${currentType}/stats/period_list${dateParams}`).then(r => r.json());
+        if (r.data && r.data.records) {
+            const recs = r.data.records.slice(0, 50).reverse();
+            const dom = document.getElementById("extPeriod");
             if (dom) {
                 const chart = echarts.init(dom);
-                chartInstances["extRatio"] = chart;
+                chartInstances["extPeriod"] = chart;
                 chart.setOption({
-                    title: { text: "奇偶比/大小比趋势" },
-                    tooltip: { trigger: "axis" },
-                    legend: { data: ["奇偶比(奇)", "大小比(大)"] },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
-                    yAxis: { type: "value", min: 0, max: 7 },
-                    series: [
-                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])) },
-                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])) },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r5 = await fetch(`${API_BASE}/lottery_7xc/stats/ratio${dateParams}`).then(r => r.json());
-        if (r5.data && r5.data.records && r5.data.records.length) {
-            const latest = (r5.data.records[0] || {}).road_012 || {};
-            renderPie("extRoad", "最新期012路分布", [
-                { name: "0路", value: latest["0"] || 0 },
-                { name: "1路", value: latest["1"] || 0 },
-                { name: "2路", value: latest["2"] || 0 },
-            ]);
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r6 = await fetch(`${API_BASE}/lottery_7xc/stats/trend${dateParams}`).then(r => r.json());
-        if (r6.data && r6.data.records) {
-            const recs = r6.data.records.slice(0, 50).reverse();
-            const dom = document.getElementById("extTrend");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extTrend"] = chart;
-                chart.setOption({
-                    title: { text: "销量/奖池趋势" },
-                    tooltip: { trigger: "axis" },
-                    legend: { data: ["销量", "奖池"] },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
-                    yAxis: { type: "value" },
-                    series: [
-                        { name: "销量", type: "line", data: recs.map(r => r.sales_amount), connectNulls: true },
-                        { name: "奖池", type: "line", data: recs.map(r => r.prize_pool), connectNulls: true },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-}
-
-// ========== 双色球扩展统计 ==========
-async function loadSsqExtend() {
-    const extCharts = document.getElementById("extendCharts");
-    if (!extCharts) return;
-    ["extRedBlue", "extSsqZone", "extSsqSum", "extSsqSpan", "extSsqHotCold", "extSsqRatio"].forEach(id => {
-        const div = document.createElement("div");
-        div.className = "chart-box";
-        div.id = id;
-        extCharts.appendChild(div);
-    });
-
-    const dateParams = getDateParam();
-
-    try {
-        const r1 = await fetch(`${API_BASE}/lottery_ssq/stats/area${dateParams}`).then(r => r.json());
-        if (r1.data) {
-            const red = r1.data.red_area || {};
-            const blue = r1.data.blue_area || {};
-            renderChart("extRedBlue", {
-                title: "红球/蓝球频率", type: "bar",
-                xData: Object.keys(red), yData: Object.values(red),
-                seriesName: "红球", xName: "号码", yName: "次",
-            });
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r2 = await fetch(`${API_BASE}/lottery_ssq/stats/zone${dateParams}`).then(r => r.json());
-        if (r2.data) {
-            const names = Object.keys(r2.data);
-            renderChart("extSsqZone", {
-                title: "红球三区分布", type: "bar",
-                xData: names.map(k => r2.data[k].range), yData: names.map(k => r2.data[k].count),
-                xName: "区间", yName: "次",
-            });
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r3 = await fetch(`${API_BASE}/lottery_ssq/stats/sum_span${dateParams}`).then(r => r.json());
-        if (r3.data) {
-            renderGauge("extSsqSum", "红球和值", r3.data.sum_avg, r3.data.sum_min, r3.data.sum_max);
-            renderGauge("extSsqSpan", "红球跨度", r3.data.span_avg, r3.data.span_min, r3.data.span_max);
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r4 = await fetch(`${API_BASE}/lottery_ssq/stats/hot_cold${dateParams}`).then(r => r.json());
-        if (r4.data) {
-            const hot = (r4.data.hot || []).reverse();
-            const cold = (r4.data.cold || []).reverse();
-            const dom = document.getElementById("extSsqHotCold");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extSsqHotCold"] = chart;
-                chart.setOption({
-                    title: { text: "冷热号 Top10" },
-                    tooltip: {},
-                    legend: { data: ["热号", "冷号"] },
-                    grid: [{ left: "5%", top: 60, width: "40%" }, { left: "55%", top: 60, width: "40%" }],
-                    xAxis: [{ gridIndex: 0, type: "value" }, { gridIndex: 1, type: "value", inverse: true }],
-                    yAxis: [
-                        { gridIndex: 0, type: "category", data: hot.map(h => "号码" + h.number) },
-                        { gridIndex: 1, type: "category", data: cold.map(c => "号码" + c.number) },
-                    ],
-                    series: [
-                        { name: "热号", type: "bar", data: hot.map(h => h.count), xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: "#e74c3c" } },
-                        { name: "冷号", type: "bar", data: cold.map(c => c.count), xAxisIndex: 1, yAxisIndex: 1, itemStyle: { color: "#3498db" } },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r5 = await fetch(`${API_BASE}/lottery_ssq/stats/ratio${dateParams}`).then(r => r.json());
-        if (r5.data && r5.data.records) {
-            const recs = r5.data.records.slice(0, 50).reverse();
-            const dom = document.getElementById("extSsqRatio");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extSsqRatio"] = chart;
-                chart.setOption({
-                    title: { text: "奇偶比/大小比趋势" },
-                    tooltip: { trigger: "axis" },
-                    legend: { data: ["奇偶比(奇)", "大小比(大)"] },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
-                    yAxis: { type: "value", min: 0, max: 6 },
-                    series: [
-                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])) },
-                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])) },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-}
-
-// ========== 排列3/排列5 共用扩展统计 ==========
-async function loadPosExtend(n) {
-    const extCharts = document.getElementById("extendCharts");
-    if (!extCharts) return;
-    const prefix = n === 3 ? "pl3" : "pl5";
-    const ids = ["extPos_" + prefix, "extDigit_" + prefix, "extHotCold_" + prefix, "extRatio_" + prefix, "extPeriod_" + prefix];
-    if (n === 3) ids.push("extType_" + prefix);
-
-    ids.forEach(id => {
-        const div = document.createElement("div");
-        div.className = "chart-box";
-        div.id = id;
-        extCharts.appendChild(div);
-    });
-
-    const dateParams = getDateParam();
-    const t = n === 3 ? "lottery_pl3" : "lottery_pl5";
-
-    try {
-        const r1 = await fetch(`${API_BASE}/${t}/stats/position${dateParams}`).then(r => r.json());
-        if (r1.data) {
-            const positions = Object.keys(r1.data);
-            const numRange = [];
-            for (let i = 0; i <= 9; i++) numRange.push(i);
-            const heatData = [];
-            positions.forEach((p, pi) => {
-                numRange.forEach((num, ni) => {
-                    heatData.push([ni, pi, r1.data[p][String(num)] || 0]);
-                });
-            });
-            const dom = document.getElementById("extPos_" + prefix);
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extPos_" + prefix] = chart;
-                chart.setOption({
-                    title: { text: "各位置号码频率热力图" },
-                    tooltip: {},
-                    grid: { left: 60, right: 20, top: 50, bottom: 50 },
-                    xAxis: { type: "category", data: numRange.map(String), name: "号码" },
-                    yAxis: { type: "category", data: positions.map(p => p.replace("pos_", "位置")), name: "位置" },
-                    visualMap: { min: 0, calculable: true, orient: "horizontal", left: "center", bottom: 0 },
-                    series: [{
-                        type: "heatmap", data: heatData, label: { show: true },
-                        emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" } },
-                    }],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r2 = await fetch(`${API_BASE}/${t}/stats/digit_freq${dateParams}`).then(r => r.json());
-        if (r2.data && r2.data.digit_freq) {
-            const d = r2.data.digit_freq;
-            renderChart("extDigit_" + prefix, {
-                title: "0-9数字频率", type: "bar",
-                xData: Object.keys(d), yData: Object.values(d),
-                xName: "数字", yName: "次",
-            });
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r3 = await fetch(`${API_BASE}/${t}/stats/hot_cold${dateParams}`).then(r => r.json());
-        if (r3.data) {
-            const hot = (r3.data.hot || []).reverse();
-            const cold = (r3.data.cold || []).reverse();
-            const dom = document.getElementById("extHotCold_" + prefix);
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extHotCold_" + prefix] = chart;
-                chart.setOption({
-                    title: { text: "冷热号 Top5" },
-                    tooltip: {},
-                    legend: { data: ["热号", "冷号"] },
-                    grid: [{ left: "5%", top: 60, width: "40%" }, { left: "55%", top: 60, width: "40%" }],
-                    xAxis: [{ gridIndex: 0, type: "value" }, { gridIndex: 1, type: "value", inverse: true }],
-                    yAxis: [
-                        { gridIndex: 0, type: "category", data: hot.map(h => "号码" + h.number) },
-                        { gridIndex: 1, type: "category", data: cold.map(c => "号码" + c.number) },
-                    ],
-                    series: [
-                        { name: "热号", type: "bar", data: hot.map(h => h.count), xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: "#e74c3c" } },
-                        { name: "冷号", type: "bar", data: cold.map(c => c.count), xAxisIndex: 1, yAxisIndex: 1, itemStyle: { color: "#3498db" } },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r4 = await fetch(`${API_BASE}/${t}/stats/ratio${dateParams}`).then(r => r.json());
-        if (r4.data && r4.data.records) {
-            const recs = r4.data.records.slice(0, 50).reverse();
-            const dom = document.getElementById("extRatio_" + prefix);
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extRatio_" + prefix] = chart;
-                chart.setOption({
-                    title: { text: "奇偶比/大小比趋势" },
-                    tooltip: { trigger: "axis" },
-                    legend: { data: ["奇偶比(奇)", "大小比(大)"] },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
-                    yAxis: { type: "value", min: 0, max: n },
-                    series: [
-                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])) },
-                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])) },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    try {
-        const r5 = await fetch(`${API_BASE}/${t}/stats/period_list${dateParams}`).then(r => r.json());
-        if (r5.data && r5.data.records) {
-            const recs = r5.data.records.slice(0, 50).reverse();
-            const dom = document.getElementById("extPeriod_" + prefix);
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extPeriod_" + prefix] = chart;
-                chart.setOption({
-                    title: { text: "和值跨度走势" },
+                    title: { text: "和值跨度走势", left: "center", textStyle: { fontSize: 14 } },
                     tooltip: { trigger: "axis" },
                     legend: { data: ["和值", "跨度"] },
                     xAxis: { type: "category", data: recs.map(r => r.draw_num) },
@@ -776,18 +434,29 @@ async function loadPosExtend(n) {
         }
     } catch(e) { console.error(e); }
 
-    if (n === 3) {
-        try {
-            const r6 = await fetch(`${API_BASE}/lottery_pl3/stats/type_analysis${dateParams}`).then(r => r.json());
-            if (r6.data) {
-                renderPie("extType_" + prefix, "组选类型分布", [
-                    { name: "组六(ABC)", value: r6.data.type_6 || 0 },
-                    { name: "组三(AAB)", value: r6.data.type_3 || 0 },
-                    { name: "豹子(AAA)", value: r6.data.type_baozi || 0 },
-                ]);
+    // 4. 奇偶比/大小比
+    try {
+        const r = await fetch(`${API_BASE}/${currentType}/stats/ratio${dateParams}`).then(r => r.json());
+        if (r.data && r.data.records) {
+            const recs = r.data.records.slice(0, 50).reverse();
+            const dom = document.getElementById("extRatio");
+            if (dom) {
+                const chart = echarts.init(dom);
+                chartInstances["extRatio"] = chart;
+                chart.setOption({
+                    title: { text: "奇偶比/大小比趋势", left: "center", textStyle: { fontSize: 14 } },
+                    tooltip: { trigger: "axis" },
+                    legend: { data: ["奇偶比(奇)", "大小比(大)"] },
+                    xAxis: { type: "category", data: recs.map(r => r.draw_num) },
+                    yAxis: { type: "value" },
+                    series: [
+                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])) },
+                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])) },
+                    ],
+                });
             }
-        } catch(e) { console.error(e); }
-    }
+        }
+    } catch(e) { console.error(e); }
 }
 
 // ========== 高级统计视图 ==========
