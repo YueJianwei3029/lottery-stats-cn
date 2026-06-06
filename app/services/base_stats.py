@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""通用统计模块：号码频率、奇偶、大小（5 个彩种通用）"""
+"""通用统计模块：号码频率、奇偶、大小（5 个彩种通用）- numpy 加速版"""
 
 import logging
+import numpy as np
 from app.core.database import db
 
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 TABLE_META = {
     "lottery_pl3": {
         "num_fields": ["num_1", "num_2", "num_3"],
-        "big_threshold": 5,   # >=5 为大，0-4 为小
+        "big_threshold": 5,
         "range_min": 0,
         "range_max": 9,
     },
@@ -33,7 +34,7 @@ TABLE_META = {
     },
     "lottery_7xc": {
         "num_fields": ["num_1", "num_2", "num_3", "num_4", "num_5", "num_6", "num_7"],
-        "big_threshold": 5,   # 0-9, >=5 为大
+        "big_threshold": 5,
         "range_min": 0,
         "range_max": 9,
     },
@@ -54,6 +55,18 @@ def _get_big_threshold(field: str, meta: dict) -> int:
     if "big_threshold_map" in meta:
         return meta["big_threshold_map"].get(field, 5)
     return meta.get("big_threshold", 5)
+
+
+def _records_to_array(records: list, fields: list) -> np.ndarray:
+    """将记录列表转换为 numpy 二维数组，None 转为 NaN"""
+    data = []
+    for r in records:
+        row = []
+        for f in fields:
+            v = r.get(f)
+            row.append(v if v is not None else np.nan)
+        data.append(row)
+    return np.array(data, dtype=float)
 
 
 def base_stats(table: str, date: str = None, end_date: str = None) -> dict:
@@ -81,36 +94,33 @@ def base_stats(table: str, date: str = None, end_date: str = None) -> dict:
     if not records:
         return empty
 
-    # 初始化
-    freq = {f: {} for f in fields}
-    oe = {f: {"odd": 0, "even": 0} for f in fields}
-    bs = {f: {"big": 0, "small": 0} for f in fields}
+    # numpy 加速：转换为二维数组
+    arr = _records_to_array(records, fields)
 
-    for r in records:
-        for field in fields:
-            val = r.get(field)
-            if val is None:
-                continue
+    freq = {}
+    oe = {}
+    bs = {}
 
-            # 频率
-            k = str(val)
-            freq[field][k] = freq[field].get(k, 0) + 1
+    for i, field in enumerate(fields):
+        col = arr[:, i]
+        valid = col[~np.isnan(col)]
 
-            # 奇偶
-            if val % 2 == 1:
-                oe[field]["odd"] += 1
-            else:
-                oe[field]["even"] += 1
+        # 频率统计
+        values, counts = np.unique(valid, return_counts=True)
+        freq[field] = {str(int(v)): int(c) for v, c in zip(values, counts) if not np.isnan(v)}
 
-            # 大小
-            threshold = _get_big_threshold(field, meta)
-            if val >= threshold:
-                bs[field]["big"] += 1
-            else:
-                bs[field]["small"] += 1
+        # 频率按 key 排序
+        freq[field] = dict(sorted(freq[field].items(), key=lambda x: int(x[0])))
 
-    # 频率排序
-    for f in fields:
-        freq[f] = dict(sorted(freq[f].items(), key=lambda x: int(x[0])))
+        # 奇偶统计（向量化）
+        odd_count = int(np.sum(valid % 2 == 1))
+        even_count = int(np.sum(valid % 2 == 0))
+        oe[field] = {"odd": odd_count, "even": even_count}
+
+        # 大小统计（向量化）
+        threshold = _get_big_threshold(field, meta)
+        big_count = int(np.sum(valid >= threshold))
+        small_count = int(np.sum(valid < threshold))
+        bs[field] = {"big": big_count, "small": small_count}
 
     return {"fields": fields, "freq": freq, "odd_even": oe, "big_small": bs}

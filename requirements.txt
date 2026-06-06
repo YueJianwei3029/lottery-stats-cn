@@ -3,3 +3,4 @@ uvicorn
 pymysql
 requests
 apscheduler
+numpy>=1.26.0

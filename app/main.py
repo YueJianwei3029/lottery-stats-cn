@@ -71,6 +71,11 @@ def root():
     return RedirectResponse(url="/frontend/index.html")
 
 
+@app.get("/api/health")
+def health():
+    return {"code": 200, "message": "ok", "data": {"status": "running"}}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host=API_HOST, port=API_PORT, reload=True)
