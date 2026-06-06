@@ -5,6 +5,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import API_HOST, API_PORT, LOG_LEVEL
@@ -67,7 +68,7 @@ if os.path.isdir(frontend_dir):
 
 @app.get("/")
 def root():
-    return {"code": 200, "message": "彩票数据统计与可视化系统", "docs": "/docs"}
+    return RedirectResponse(url="/frontend/index.html")
 
 
 if __name__ == "__main__":
