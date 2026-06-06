@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彩票数据统计与可视化系统</title>
+    <link rel="stylesheet" href="css/style.css?v=14">
+    <script src="js/echarts.min.js"></script>
+</head>
+<body>
+    <!-- 标题栏 -->
+    <header class="header">
+        <h1>彩票数据统计与可视化系统</h1>
+    </header>
+
+    <!-- 主体：左导航 + 右内容 -->
+    <div class="layout">
+
+        <!-- 左侧彩种导航 -->
+        <aside class="sidebar" id="lotteryNav">
+            <div class="nav-item active" data-type="lottery_dlt">超级大乐透</div>
+            <div class="nav-item" data-type="lottery_7xc">七星彩</div>
+            <div class="nav-item" data-type="lottery_ssq">双色球</div>
+            <div class="nav-item" data-type="lottery_pl5">排列5</div>
+            <div class="nav-item" data-type="lottery_pl3">排列3</div>
+        </aside>
+
+        <!-- 右侧主内容 -->
+        <main class="content">
+
+            <!-- 日期栏 -->
+            <div class="query-bar">
+                <label>起始日期:</label>
+                <input type="date" id="dateStart" value="2026-01-01">
+                <span class="query-sep">至</span>
+                <input type="date" id="dateEnd" value="">
+                <button id="queryBtn" class="btn-primary">查询</button>
+            </div>
+
+            <!-- 视图切换按钮 -->
+            <div class="view-bar">
+                <button class="view-btn active" data-view="query">数据查询</button>
+                <button class="view-btn" data-view="stats">基础统计</button>
+                <button class="view-btn" data-view="extend">扩展统计</button>
+            </div>
+
+            <!-- 数据查询视图 -->
+            <section class="panel" id="viewQuery">
+                <div id="tableContainer">
+                    <table class="data-table" id="dataTable">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                    <div class="pagination" id="pagination">
+                        <button id="prevBtn">上一页</button>
+                        <span id="pageInfo">第 1 页</span>
+                        <button id="nextBtn">下一页</button>
+                        <span id="totalInfo"></span>
+                        <span class="page-size">
+                            每页
+                            <select id="pageSizeSelect">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            条
+                        </span>
+                    </div>
+                    <div class="loading" id="tableLoading" style="display:none;">加载中...</div>
+                    <div class="empty" id="tableEmpty" style="display:none;">暂无数据</div>
+                </div>
+            </section>
+
+            <!-- 基础统计视图 -->
+            <section class="panel" id="viewStats" style="display:none;">
+                <div id="statsContainer"><!-- 动态填充图表容器 --></div>
+            </section>
+
+            <!-- 扩展统计视图 -->
+            <section class="panel" id="viewExtend" style="display:none;">
+                <div id="extendContent">
+                    <!-- 动态内容：有扩展统计的显示图表，没有的显示开发中 -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="js/app.js?v=13"></script>
+</body>
+</html>
