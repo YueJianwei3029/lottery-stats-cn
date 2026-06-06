@@ -215,6 +215,15 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
+/* 高级统计：单列大图铺满 */
+.charts-full {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.charts-full .chart-box {
+    height: 480px;
+}
 
 /* 基础统计视图：上下布局 */
 .stats-layout {
@@ -284,6 +293,48 @@ body {
     padding: 40px;
     color: #999;
     font-size: 14px;
+}
+
+/* ========== 高级统计子菜单 ========== */
+.sub-menu {
+    display: flex;
+    gap: 8px;
+    padding: 0 0 16px 0;
+    border-bottom: 1px solid #e8eaed;
+    margin-bottom: 16px;
+}
+.sub-btn {
+    padding: 7px 18px;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.sub-btn:hover {
+    border-color: #1a73e8;
+    color: #1a73e8;
+    background: #f0f7ff;
+}
+.sub-btn.active {
+    background: #1a73e8;
+    color: #fff;
+    border-color: #1a73e8;
+    font-weight: 500;
+}
+.sub-btn:disabled {
+    color: #bbb;
+    cursor: not-allowed;
+    border-color: #eee;
+    background: #f5f5f5;
+}
+.sub-btn:disabled:hover {
+    border-color: #eee;
+    color: #bbb;
+    background: #f5f5f5;
 }
 
 /* 响应式 */

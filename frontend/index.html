@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>彩票数据统计与可视化系统</title>
-    <link rel="stylesheet" href="css/style.css?v=14">
+    <link rel="stylesheet" href="css/style.css?v=15">
     <script src="js/echarts.min.js"></script>
+    <script src="js/config.js"></script>
 </head>
 <body>
     <!-- 标题栏 -->
@@ -42,6 +43,7 @@
                 <button class="view-btn active" data-view="query">数据查询</button>
                 <button class="view-btn" data-view="stats">基础统计</button>
                 <button class="view-btn" data-view="extend">扩展统计</button>
+                <button class="view-btn" data-view="advanced">高级统计</button>
             </div>
 
             <!-- 数据查询视图 -->
@@ -80,13 +82,25 @@
             <!-- 扩展统计视图 -->
             <section class="panel" id="viewExtend" style="display:none;">
                 <div id="extendContent">
-                    <!-- 动态内容：有扩展统计的显示图表，没有的显示开发中 -->
+                    <!-- 动态内容：所有5个彩种均有扩展统计 -->
+                </div>
+            </section>
+
+            <!-- 高级统计视图 -->
+            <section class="panel" id="viewAdvanced" style="display:none;">
+                <div class="sub-menu" id="advancedSubMenu">
+                    <button class="sub-btn active" data-sub="std">标准差</button>
+                    <button class="sub-btn" data-sub="percentile">分位数</button>
+                    <button class="sub-btn" data-sub="normal">正态分布</button>
+                </div>
+                <div class="charts-full" id="advancedCharts">
+                    <!-- 动态填充高级统计图表 -->
                 </div>
             </section>
 
         </main>
     </div>
 
-    <script src="js/app.js?v=13"></script>
+    <script src="js/app.js?v=14"></script>
 </body>
 </html>
