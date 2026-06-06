@@ -348,6 +348,7 @@ async function loadUnifiedExtend() {
     });
 
     const dateParams = getDateParam();
+    const isDLT = currentType === "lottery_dlt";  // DLT 开启 dataZoom 滑块
 
     // 1. 热力图
     try {
@@ -414,23 +415,30 @@ async function loadUnifiedExtend() {
     try {
         const r = await fetch(`${API_BASE}/${currentType}/stats/period_list${dateParams}`).then(r => r.json());
         if (r.data && r.data.records) {
-            const recs = r.data.records.slice(0, 50).reverse();
+            const recs = r.data.records.reverse();
             const dom = document.getElementById("extPeriod");
             if (dom) {
                 const chart = echarts.init(dom);
                 chartInstances["extPeriod"] = chart;
-                chart.setOption({
+                const opt = {
                     title: { text: "和值跨度走势", left: "center", top: 4, textStyle: { fontSize: 14 } },
                     tooltip: { trigger: "axis" },
                     legend: { data: ["和值", "跨度"], top: 28 },
-                    grid: { left: 50, right: 20, top: 55, bottom: 40 },
+                    grid: { left: 50, right: 20, top: 55, bottom: isDLT ? 70 : 40 },
                     xAxis: { type: "category", data: recs.map(r => r.draw_num), axisLabel: { rotate: 45, fontSize: 10 } },
                     yAxis: { type: "value" },
                     series: [
                         { name: "和值", type: "line", data: recs.map(r => r.sum_val), smooth: true },
                         { name: "跨度", type: "line", data: recs.map(r => r.span), smooth: true },
                     ],
-                });
+                };
+                if (isDLT) {
+                    opt.dataZoom = [
+                        { type: "slider", start: 0, end: 20, height: 20, bottom: 6 },
+                        { type: "inside" },
+                    ];
+                }
+                chart.setOption(opt);
             }
         }
     } catch(e) { console.error(e); }
@@ -439,23 +447,30 @@ async function loadUnifiedExtend() {
     try {
         const r = await fetch(`${API_BASE}/${currentType}/stats/ratio${dateParams}`).then(r => r.json());
         if (r.data && r.data.records) {
-            const recs = r.data.records.slice(0, 50).reverse();
+            const recs = r.data.records.reverse();
             const dom = document.getElementById("extRatio");
             if (dom) {
                 const chart = echarts.init(dom);
                 chartInstances["extRatio"] = chart;
-                chart.setOption({
+                const opt = {
                     title: { text: "奇偶比/大小比趋势", left: "center", top: 4, textStyle: { fontSize: 14 } },
                     tooltip: { trigger: "axis" },
                     legend: { data: ["奇偶比(奇)", "大小比(大)"], top: 28 },
-                    grid: { left: 50, right: 20, top: 55, bottom: 40 },
+                    grid: { left: 50, right: 20, top: 55, bottom: isDLT ? 70 : 40 },
                     xAxis: { type: "category", data: recs.map(r => r.draw_num), axisLabel: { rotate: 45, fontSize: 10 } },
                     yAxis: { type: "value" },
                     series: [
                         { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])), smooth: true },
                         { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])), smooth: true },
                     ],
-                });
+                };
+                if (isDLT) {
+                    opt.dataZoom = [
+                        { type: "slider", start: 0, end: 20, height: 20, bottom: 6 },
+                        { type: "inside" },
+                    ];
+                }
+                chart.setOption(opt);
             }
         }
     } catch(e) { console.error(e); }
