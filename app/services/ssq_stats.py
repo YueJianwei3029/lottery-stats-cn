@@ -15,6 +15,13 @@ def _get_records(date=None, end_date=None):
     return db.fetch_all("lottery_ssq", date=date, end_date=end_date)
 
 
+def _get_trend_records(date=None, end_date=None, limit=500):
+    records = db.fetch_all("lottery_ssq", date=date, end_date=end_date)
+    if not date and not end_date:
+        return records[:limit]
+    return records
+
+
 def _records_to_array(records, fields):
     data = []
     for r in records:
@@ -41,8 +48,9 @@ def position_stats(date=None, end_date=None) -> dict:
 def hot_cold_stats(date=None, end_date=None) -> dict:
     records = _get_records(date, end_date)
     if not records: return {"hot": [], "cold": []}
-    recent = records[:30]
-    arr = _records_to_array(recent, RED_FIELDS)
+    if not date and not end_date:
+        records = records[:50]
+    arr = _records_to_array(records, RED_FIELDS)
     valid = arr[~np.isnan(arr)].astype(int)
     vals, cnts = np.unique(valid, return_counts=True)
     si = np.argsort(-cnts)
@@ -61,7 +69,7 @@ def hot_cold_stats(date=None, end_date=None) -> dict:
 
 # ========== 3. 和值跨度走势 ==========
 def period_list_stats(date=None, end_date=None) -> dict:
-    records = _get_records(date, end_date)
+    records = _get_trend_records(date, end_date)
     arr = _records_to_array(records, RED_FIELDS)
     period_list = []
     for idx, r in enumerate(records):
@@ -78,7 +86,7 @@ def period_list_stats(date=None, end_date=None) -> dict:
 
 # ========== 4. 奇偶比/大小比 ==========
 def ratio_stats(date=None, end_date=None) -> dict:
-    records = _get_records(date, end_date)
+    records = _get_trend_records(date, end_date)
     arr = _records_to_array(records, RED_FIELDS)
     result = []
     for idx, r in enumerate(records):

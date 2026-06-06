@@ -225,6 +225,22 @@ body {
     height: 480px;
 }
 
+/* 扩展统计：自适应布局 */
+.extend-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.extend-row {
+    width: 100%;
+}
+.extend-row .chart-box {
+    height: 350px;
+}
+.extend-row .chart-box.chart-full {
+    height: 440px;
+}
+
 /* 基础统计视图：上下布局 */
 .stats-layout {
     display: flex;
@@ -286,6 +302,50 @@ body {
     user-select: none;
 }
 .chart-tip:hover { background: #1a73e8; color: #fff; }
+
+/* 图表帮助模态框 */
+.chart-help-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.chart-help-dialog {
+    background: #fff;
+    border-radius: 10px;
+    padding: 28px 32px;
+    max-width: 520px;
+    width: 90%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.chart-help-dialog h3 {
+    font-size: 18px;
+    color: #1a73e8;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8eaed;
+}
+.chart-help-dialog p {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.8;
+    margin-bottom: 8px;
+}
+.chart-help-dialog .help-close {
+    float: right;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 18px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.chart-help-dialog .help-close:hover { background: #1557b0; }
 
 /* 加载/空态 */
 .loading, .empty {

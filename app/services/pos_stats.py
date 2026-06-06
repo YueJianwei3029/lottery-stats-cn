@@ -12,6 +12,14 @@ PL5_FIELDS = ["num_1", "num_2", "num_3", "num_4", "num_5"]
 BIG_THRESHOLD = 5
 
 
+def _get_trend_records(table, date=None, end_date=None, limit=500):
+    """走势图专用：限制返回条数"""
+    records = db.fetch_all(table, date=date, end_date=end_date)
+    if not date and not end_date:
+        return records[:limit]
+    return records
+
+
 def _records_to_array(records, fields):
     data = []
     for r in records:
@@ -37,8 +45,9 @@ def position_stats(table: str, fields: list, date=None, end_date=None) -> dict:
 def hot_cold_stats(table: str, fields: list, date=None, end_date=None) -> dict:
     records = db.fetch_all(table, date=date, end_date=end_date)
     if not records: return {"hot": [], "cold": []}
-    recent = records[:20]
-    arr = _records_to_array(recent, fields)
+    if not date and not end_date:
+        records = records[:50]
+    arr = _records_to_array(records, fields)
     valid = arr[~np.isnan(arr)].astype(int)
     vals, cnts = np.unique(valid, return_counts=True)
     si = np.argsort(-cnts)
@@ -57,7 +66,7 @@ def hot_cold_stats(table: str, fields: list, date=None, end_date=None) -> dict:
 
 # ========== 3. 和值跨度走势 ==========
 def period_list_stats(table: str, fields: list, date=None, end_date=None) -> dict:
-    records = db.fetch_all(table, date=date, end_date=end_date)
+    records = _get_trend_records(table, date=date, end_date=end_date)
     arr = _records_to_array(records, fields)
     n = len(fields); period_list = []
     for idx, r in enumerate(records):
@@ -75,7 +84,7 @@ def period_list_stats(table: str, fields: list, date=None, end_date=None) -> dic
 
 # ========== 4. 奇偶比/大小比 ==========
 def ratio_stats(table: str, fields: list, date=None, end_date=None) -> dict:
-    records = db.fetch_all(table, date=date, end_date=end_date)
+    records = _get_trend_records(table, date=date, end_date=end_date)
     arr = _records_to_array(records, fields)
     n = len(fields); result = []
     for idx, r in enumerate(records):

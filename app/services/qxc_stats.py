@@ -15,6 +15,13 @@ def _get_records(date: str = None, end_date: str = None):
     return db.fetch_all("lottery_7xc", date=date, end_date=end_date)
 
 
+def _get_trend_records(date=None, end_date=None, limit=500):
+    records = db.fetch_all("lottery_7xc", date=date, end_date=end_date)
+    if not date and not end_date:
+        return records[:limit]
+    return records
+
+
 def _records_to_array(records, fields):
     data = []
     for r in records:
@@ -44,7 +51,7 @@ def position_stats(date: str = None, end_date: str = None) -> dict:
 
 def period_list_stats(date: str = None, end_date: str = None) -> dict:
     """全期奇偶/大小/和值/跨度列表"""
-    records = _get_records(date, end_date)
+    records = _get_trend_records(date, end_date)
     arr = _records_to_array(records, NUM_FIELDS)
     period_list = []
 
@@ -88,12 +95,13 @@ def digit_freq_stats(date: str = None, end_date: str = None) -> dict:
 
 
 def hot_cold_stats(date: str = None, end_date: str = None) -> dict:
-    """近 10 期热号/冷号 Top5"""
+    """近 50 期热号/冷号 Top5；有日期范围则按范围全量统计"""
     records = _get_records(date, end_date)
     if not records:
         return {"hot": [], "cold": []}
 
-    recent = records[:10]
+    if not date and not end_date:
+        records = records[:50]
     arr = _records_to_array(recent, NUM_FIELDS)
     valid = arr[~np.isnan(arr)].astype(int)
 
@@ -122,7 +130,7 @@ def hot_cold_stats(date: str = None, end_date: str = None) -> dict:
 
 def ratio_stats(date: str = None, end_date: str = None) -> dict:
     """单期奇偶比、大小比、012路分布"""
-    records = _get_records(date, end_date)
+    records = _get_trend_records(date, end_date)
     arr = _records_to_array(records, NUM_FIELDS)
     result = []
 

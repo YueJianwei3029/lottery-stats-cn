@@ -21,6 +21,14 @@ def _get_records(date=None, end_date=None):
     return db.fetch_all("lottery_dlt", date=date, end_date=end_date)
 
 
+def _get_trend_records(date=None, end_date=None, limit=500):
+    """走势图专用：限制返回条数，避免数据过载"""
+    records = db.fetch_all("lottery_dlt", date=date, end_date=end_date)
+    if not date and not end_date:
+        return records[:limit]
+    return records
+
+
 def _records_to_array(records, fields):
     data = []
     for r in records:
@@ -48,8 +56,10 @@ def hot_cold_stats(date=None, end_date=None) -> dict:
     records = _get_records(date, end_date)
     if not records:
         return {"hot": [], "cold": []}
-    recent = records[:20]
-    arr = _records_to_array(recent, FRONT_FIELDS)
+    # 仅在无日期筛选时限制最近50期，有日期范围则用全量
+    if not date and not end_date:
+        records = records[:50]
+    arr = _records_to_array(records, FRONT_FIELDS)
     valid = arr[~np.isnan(arr)].astype(int)
     vals, cnts = np.unique(valid, return_counts=True)
     si = np.argsort(-cnts)
@@ -68,7 +78,7 @@ def hot_cold_stats(date=None, end_date=None) -> dict:
 
 # ========== 3. 和值跨度走势 ==========
 def period_list_stats(date=None, end_date=None) -> dict:
-    records = _get_records(date, end_date)
+    records = _get_trend_records(date, end_date)
     arr = _records_to_array(records, FRONT_FIELDS)
     period_list = []
     for idx, r in enumerate(records):
@@ -86,7 +96,7 @@ def period_list_stats(date=None, end_date=None) -> dict:
 
 # ========== 4. 奇偶比/大小比 ==========
 def ratio_stats(date=None, end_date=None) -> dict:
-    records = _get_records(date, end_date)
+    records = _get_trend_records(date, end_date)
     arr = _records_to_array(records, FRONT_FIELDS)
     result = []
     for idx, r in enumerate(records):

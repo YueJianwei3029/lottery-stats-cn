@@ -4,14 +4,45 @@
 
 const API_BASE = window.APP_CONFIG ? window.APP_CONFIG.API_BASE : "/api";
 const HAS_EXTEND = { lottery_dlt: true, lottery_7xc: true, lottery_ssq: true, lottery_pl5: true, lottery_pl3: true };
-const HAS_NORMAL = { lottery_dlt: true, lottery_ssq: true };  // 正态分布适用彩种
 let currentType = "lottery_dlt";
 let currentPage = 1;
 let totalPages = 1;
 let currentPageSize = 20;
 let chartInstances = {};
 let currentView = "query";
-let currentAdvancedSub = "std";
+let currentExtendSub = "dist";
+
+function div(cls, id, extraCls) {
+    const d = document.createElement("div");
+    d.className = cls + (extraCls ? " " + extraCls : "");
+    if (id) d.id = id;
+    return d;
+}
+
+// ========== 图表帮助 ==========
+var CHART_HELP = {
+    extHeat: { title: "位置×号码 热力图", text: "统计每个位置（纵轴）各个号码（横轴）在选定日期范围内的出现次数。<br><br><b>原理：</b>按日期范围筛选数据（默认全量），遍历所有期数，累计每个位置上各号码出现的频次。<br><br><b>读法：</b>颜色越深表示该位置该号码出现次数越多，可快速识别各位置的号码分布规律。<br><br><b>注：</b>各彩种号码范围不同（排列类0-9，双色球红球1-33，大乐透前区1-35），X轴范围会相应变化。" },
+    extHotCold: { title: "冷热号", text: "统计选定日期范围内各号码的出现频次。<br><br><b>热号：</b>出现次数最多的号码（Top5~10），即高频号码。<br><b>冷号：</b>出现次数最少或从未出现的号码，即长期未出的号码。<br><br><b>原理：</b>按日期范围筛选数据，统计每个号码出现次数并按降序排列。若未指定日期，默认取最近50期；若指定了日期范围，则使用范围内全量数据。<br><br><b>读法：</b>左侧（红色）为热号，右侧（蓝色）为冷号。" },
+    extPeriod: { title: "和值跨度走势", text: "逐期展示每期的号码之和与号码极差（最大值-最小值）。<br><br><b>和值：</b>当期所有号码相加的总和，反映号码整体的集中趋势。<br><b>跨度：</b>当期最大号码与最小号码的差值，反映号码的分散程度。<br><br><b>原理：</b>逐期计算和值与跨度，以折线图呈现变化趋势。若未指定日期，默认取最近500期；指定日期范围则使用范围内全量数据。可通过底部控件调整显示期数（20~200期）。" },
+    extRatio: { title: "奇偶比/大小比趋势", text: "逐期展示每期奇数号码个数与偶数号码个数的比例，以及大号个数与小号个数的比例。<br><br><b>奇偶比：</b>奇数数量 : 偶数数量（如3:2表示3奇2偶）。<br><b>大小比：</b>大号数量 : 小号数量，分界值各彩种不同（排列类≥5为大，双色球红球≥17为大，大乐透前区≥18为大）。<br><br><b>原理：</b>逐期统计奇数/偶数个数和大号/小号个数，折线图展示趋势变化。若未指定日期，默认取最近500期。可通过底部控件调整显示期数（20~200期）。" },
+};
+function showChartHelp(key) {
+    var h = CHART_HELP[key];
+    if (!h) return;
+    var overlay = document.createElement("div");
+    overlay.className = "chart-help-overlay";
+    overlay.innerHTML = '<div class="chart-help-dialog"><h3>📊 ' + h.title + '</h3><p>' + h.text + '</p><button class="help-close" onclick="this.closest(\'.chart-help-overlay\').remove()">关闭</button></div>';
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+function addHelpBtn(box, key) {
+    var btn = document.createElement("span");
+    btn.className = "chart-tip";
+    btn.title = "点击查看说明";
+    btn.textContent = "?";
+    btn.onclick = function(e) { e.stopPropagation(); showChartHelp(key); };
+    box.appendChild(btn);
+}
 
 // ========== 初始化 ==========
 document.addEventListener("DOMContentLoaded", () => {
@@ -67,7 +98,7 @@ function initViewToggle() {
 
             if (view === "stats") loadStats();
             else if (view === "extend") loadExtendView();
-            else if (view === "advanced") { initAdvancedSubMenu(); loadAdvancedView(); }
+            else if (view === "advanced") loadAdvancedView();
         });
     });
 }
@@ -305,10 +336,26 @@ function disposeStatsCharts() {
     });
 }
 
-// ========== 扩展统计视图（独立页面） ==========
+// ========== 扩展统计视图（子菜单模式） ==========
+function initExtendSubMenu() {
+    document.querySelectorAll("#extendSubMenu .sub-btn").forEach(btn => {
+        btn.onclick = null;
+        btn.addEventListener("click", () => {
+            const sub = btn.dataset.sub;
+            if (sub === currentExtendSub) return;
+            currentExtendSub = sub;
+            document.querySelectorAll("#extendSubMenu .sub-btn").forEach(b =>
+                b.classList.toggle("active", b.dataset.sub === sub)
+            );
+            loadExtendCharts();
+        });
+    });
+}
+
 function loadExtendView() {
     const container = document.getElementById("extendContent");
     disposeExtendCharts();
+    initExtendSubMenu();
 
     if (!HAS_EXTEND[currentType]) {
         container.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#999;">
@@ -319,7 +366,7 @@ function loadExtendView() {
         return;
     }
 
-    container.innerHTML = '<div class="charts-grid" id="extendCharts"></div>';
+    container.innerHTML = '<div id="extendCharts"></div>';
     loadExtendCharts();
 }
 
@@ -333,23 +380,34 @@ function disposeExtendCharts() {
 }
 
 async function loadExtendCharts() {
-    await loadUnifiedExtend();
+    if (currentExtendSub === "dist") {
+        await loadDistCharts();
+    } else {
+        await loadTrendCharts();
+    }
 }
 
-// ========== 统一扩展统计（4图：热力图/冷热号/和值跨度/奇偶比） ==========
-async function loadUnifiedExtend() {
+// ========== 子菜单1：分布分析（热力图 + 冷热号） ==========
+async function loadDistCharts() {
     const extCharts = document.getElementById("extendCharts");
     if (!extCharts) return;
-    ["extHeat", "extHotCold", "extPeriod", "extRatio"].forEach(id => {
-        const div = document.createElement("div");
-        div.className = "chart-box";
-        div.id = id;
-        extCharts.appendChild(div);
-    });
+    extCharts.innerHTML = "";
+    extCharts.className = "extend-layout";
 
     const dateParams = getDateParam();
+    const isBig = currentType === "lottery_dlt" || currentType === "lottery_ssq";
 
-    // 1. 热力图
+    const heatRow = div("extend-row");
+    const heatBox = div("chart-box", "extHeat", isBig ? "chart-full" : "");
+    heatRow.appendChild(heatBox);
+    extCharts.appendChild(heatRow);
+
+    const hcRow = div("extend-row");
+    const hcBox = div("chart-box", "extHotCold");
+    hcRow.appendChild(hcBox);
+    extCharts.appendChild(hcRow);
+
+    // 热力图
     try {
         const r = await fetch(`${API_BASE}/${currentType}/stats/position${dateParams}`).then(r => r.json());
         if (r.data) {
@@ -359,240 +417,136 @@ async function loadUnifiedExtend() {
             const numRange = Array.from(numSet).sort((a, b) => a - b);
             const heatData = [];
             positions.forEach((p, pi) => {
-                numRange.forEach((n, ni) => {
-                    heatData.push([ni, pi, r.data[p][String(n)] || 0]);
-                });
+                numRange.forEach((n, ni) => { heatData.push([ni, pi, r.data[p][String(n)] || 0]); });
             });
             const labels = positions.map(p => p.replace("pos_", "位置"));
-            const dom = document.getElementById("extHeat");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extHeat"] = chart;
-                chart.setOption({
-                    title: { text: "位置×号码 热力图", left: "center", top: 4, textStyle: { fontSize: 14 } },
-                    tooltip: {},
-                    grid: { left: 60, right: 20, top: 40, bottom: 55 },
-                    xAxis: { type: "category", data: numRange.map(String), name: "号码" },
-                    yAxis: { type: "category", data: labels, name: "位置" },
-                    visualMap: { min: 0, calculable: true, orient: "horizontal", left: "center", bottom: 8 },
-                    series: [{ type: "heatmap", data: heatData, label: { show: true } }],
-                });
-            }
+            const chart = echarts.init(heatBox);
+            chartInstances["extHeat"] = chart;
+            addHelpBtn(heatBox, "extHeat");
+            chart.setOption({
+                title: { text: "位置×号码 热力图", left: "center", top: 4, textStyle: { fontSize: 14 } },
+                tooltip: {},
+                grid: { left: 70, right: 30, top: 40, bottom: 75 },
+                xAxis: { type: "category", data: numRange.map(String), name: "号码", axisLabel: { rotate: numRange.length > 20 ? 45 : 0, fontSize: 10 } },
+                yAxis: { type: "category", data: labels, name: "位置" },
+                visualMap: { min: 0, calculable: true, orient: "horizontal", left: "center", bottom: 18 },
+                series: [{ type: "heatmap", data: heatData, label: { show: true } }],
+            });
         }
     } catch(e) { console.error(e); }
 
-    // 2. 冷热号
+    // 冷热号
     try {
         const r = await fetch(`${API_BASE}/${currentType}/stats/hot_cold${dateParams}`).then(r => r.json());
         if (r.data) {
             const hot = (r.data.hot || []).reverse();
             const cold = (r.data.cold || []).reverse();
-            const dom = document.getElementById("extHotCold");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extHotCold"] = chart;
-                chart.setOption({
-                    title: { text: "冷热号", left: "center", top: 4, textStyle: { fontSize: 14 } },
-                    tooltip: {},
-                    legend: { data: ["热号", "冷号"], top: 30 },
-                    grid: [{ left: "5%", top: 70, width: "40%" }, { left: "55%", top: 70, width: "40%" }],
-                    xAxis: [{ gridIndex: 0, type: "value" }, { gridIndex: 1, type: "value", inverse: true }],
-                    yAxis: [
-                        { gridIndex: 0, type: "category", data: hot.map(h => h.number) },
-                        { gridIndex: 1, type: "category", data: cold.map(c => c.number) },
-                    ],
-                    series: [
-                        { name: "热号", type: "bar", data: hot.map(h => h.count), xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: "#e74c3c" } },
-                        { name: "冷号", type: "bar", data: cold.map(c => c.count), xAxisIndex: 1, yAxisIndex: 1, itemStyle: { color: "#3498db" } },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    // 3. 和值跨度走势
-    try {
-        const r = await fetch(`${API_BASE}/${currentType}/stats/period_list${dateParams}`).then(r => r.json());
-        if (r.data && r.data.records) {
-            const recs = r.data.records.reverse();
-            const dom = document.getElementById("extPeriod");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extPeriod"] = chart;
-                const opt = {
-                    title: { text: "和值跨度走势", left: "center", top: 4, textStyle: { fontSize: 14 } },
-                    tooltip: { trigger: "axis" },
-                    legend: { data: ["和值", "跨度"], top: 28 },
-                    grid: { left: 50, right: 20, top: 55, bottom: 70 },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num), axisLabel: { rotate: 45, fontSize: 10 } },
-                    yAxis: { type: "value" },
-                    dataZoom: [
-                        { type: "slider", start: 0, end: 20, height: 20, bottom: 6 },
-                        { type: "inside" },
-                    ],
-                    series: [
-                        { name: "和值", type: "line", data: recs.map(r => r.sum_val), smooth: true },
-                        { name: "跨度", type: "line", data: recs.map(r => r.span), smooth: true },
-                    ],
-                });
-            }
-        }
-    } catch(e) { console.error(e); }
-
-    // 4. 奇偶比/大小比
-    try {
-        const r = await fetch(`${API_BASE}/${currentType}/stats/ratio${dateParams}`).then(r => r.json());
-        if (r.data && r.data.records) {
-            const recs = r.data.records.reverse();
-            const dom = document.getElementById("extRatio");
-            if (dom) {
-                const chart = echarts.init(dom);
-                chartInstances["extRatio"] = chart;
-                const opt = {
-                    title: { text: "奇偶比/大小比趋势", left: "center", top: 4, textStyle: { fontSize: 14 } },
-                    tooltip: { trigger: "axis" },
-                    legend: { data: ["奇偶比(奇)", "大小比(大)"], top: 28 },
-                    grid: { left: 50, right: 20, top: 55, bottom: 70 },
-                    xAxis: { type: "category", data: recs.map(r => r.draw_num), axisLabel: { rotate: 45, fontSize: 10 } },
-                    yAxis: { type: "value" },
-                    dataZoom: [
-                        { type: "slider", start: 0, end: 20, height: 20, bottom: 6 },
-                        { type: "inside" },
-                    ],
-                    series: [
-                        { name: "奇偶比(奇)", type: "line", data: recs.map(r => Number((r.odd_even_ratio || "0:0").split(":")[0])), smooth: true },
-                        { name: "大小比(大)", type: "line", data: recs.map(r => Number((r.big_small_ratio || "0:0").split(":")[0])), smooth: true },
-                    ],
-                };
-                chart.setOption(opt);
-            }
-        }
-    } catch(e) { console.error(e); }
-}
-
-// ========== 高级统计视图 ==========
-function initAdvancedSubMenu() {
-    document.querySelectorAll("#advancedSubMenu .sub-btn").forEach(btn => {
-        btn.onclick = null;
-        btn.addEventListener("click", () => {
-            const sub = btn.dataset.sub;
-            if (sub === currentAdvancedSub) return;
-            currentAdvancedSub = sub;
-            document.querySelectorAll("#advancedSubMenu .sub-btn").forEach(b =>
-                b.classList.toggle("active", b.dataset.sub === sub)
-            );
-            loadAdvancedCharts();
-        });
-    });
-    updateAdvancedSubMenu();
-}
-
-function updateAdvancedSubMenu() {
-    const normalBtn = document.querySelector('[data-sub="normal"]');
-    if (normalBtn) {
-        const hasNormal = HAS_NORMAL[currentType] || false;
-        normalBtn.disabled = !hasNormal;
-        normalBtn.title = hasNormal ? "" : "号码范围太小，不支持正态分析";
-    }
-}
-
-function loadAdvancedView() {
-    disposeAdvancedCharts();
-    updateAdvancedSubMenu();
-    if (currentAdvancedSub === "normal" && (!HAS_NORMAL[currentType])) {
-        currentAdvancedSub = "std";
-        document.querySelectorAll("#advancedSubMenu .sub-btn").forEach(b =>
-            b.classList.toggle("active", b.dataset.sub === "std")
-        );
-    }
-    const container = document.getElementById("advancedCharts");
-    container.innerHTML = "";
-    loadAdvancedCharts();
-}
-
-function disposeAdvancedCharts() {
-    Object.keys(chartInstances).forEach(id => {
-        if (id.startsWith("adv") && chartInstances[id]) {
-            chartInstances[id].dispose();
-            delete chartInstances[id];
-        }
-    });
-}
-
-function loadAdvancedCharts() {
-    disposeAdvancedCharts();
-    const dateParams = getDateParam();
-    switch (currentAdvancedSub) {
-        case "std": loadAdvancedStd(dateParams); break;
-        case "percentile": loadAdvancedPercentile(dateParams); break;
-        case "normal": loadAdvancedNormal(dateParams); break;
-    }
-}
-
-async function loadAdvancedStd(dateParams) {
-    const container = document.getElementById("advancedCharts");
-    container.innerHTML = `<div class="chart-box" id="advStd"></div>`;
-    try {
-        const resp = await fetch(`${API_BASE}/${currentType}/stats/advanced/std${dateParams}`).then(r => r.json());
-        if (resp.data && resp.data.stats) {
-            const s = resp.data.stats;
-            renderChart("advStd", {
-                title: "各位置号码标准差（含均值参考）",
-                xData: s.map(d => d.field), yData: s.map(d => d.std),
-                seriesName: "标准差", xName: "位置", yName: "标准差",
-            });
-        }
-    } catch(e) { console.error("高级统计-标准差加载失败:", e); container.innerHTML = '<div class="empty">高级统计接口尚未部署，等待后端开发</div>'; }
-}
-
-async function loadAdvancedPercentile(dateParams) {
-    const container = document.getElementById("advancedCharts");
-    container.innerHTML = `<div class="chart-box" id="advPercentile"></div>`;
-    try {
-        const resp = await fetch(`${API_BASE}/${currentType}/stats/advanced/percentile${dateParams}`).then(r => r.json());
-        if (resp.data && resp.data.stats) {
-            const s = resp.data.stats;
-            renderGroupedBar("advPercentile", {
-                title: "各位置分位数分布 (P25/P50/P75)",
-                xData: s.map(d => d.field),
-                series: [
-                    { name: "P25", data: s.map(d => d.p25) },
-                    { name: "P50", data: s.map(d => d.p50) },
-                    { name: "P75", data: s.map(d => d.p75) },
+            const chart = echarts.init(hcBox);
+            chartInstances["extHotCold"] = chart;
+            addHelpBtn(hcBox, "extHotCold");
+            chart.setOption({
+                title: { text: "冷热号", left: "center", top: 4, textStyle: { fontSize: 14 } },
+                tooltip: {},
+                legend: { data: ["热号", "冷号"], top: 30 },
+                grid: [{ left: "5%", top: 70, width: "40%" }, { left: "55%", top: 70, width: "40%" }],
+                xAxis: [{ gridIndex: 0, type: "value" }, { gridIndex: 1, type: "value", inverse: true }],
+                yAxis: [
+                    { gridIndex: 0, type: "category", data: hot.map(h => h.number) },
+                    { gridIndex: 1, type: "category", data: cold.map(c => c.number) },
                 ],
-                xName: "位置", yName: "号码值"
+                series: [
+                    { name: "热号", type: "bar", data: hot.map(h => h.count), xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: "#e74c3c" } },
+                    { name: "冷号", type: "bar", data: cold.map(c => c.count), xAxisIndex: 1, yAxisIndex: 1, itemStyle: { color: "#3498db" } },
+                ],
             });
         }
-    } catch(e) { console.error("高级统计-分位数加载失败:", e); container.innerHTML = '<div class="empty">高级统计接口尚未部署，等待后端开发</div>'; }
+    } catch(e) { console.error(e); }
 }
 
-async function loadAdvancedNormal(dateParams) {
-    const container = document.getElementById("advancedCharts");
-    container.innerHTML = '<div id="advNormalContainer" style="display:flex;flex-direction:column;gap:16px;"></div>';
+// ========== 子菜单2：走势分析（和值跨度 + 奇偶比） ==========
+async function loadTrendCharts() {
+    const extCharts = document.getElementById("extendCharts");
+    if (!extCharts) return;
+    extCharts.innerHTML = "";
+    extCharts.className = "extend-layout";
+
+    const dateParams = getDateParam();
+
+    const pRow = div("extend-row");
+    const pBox = div("chart-box", "extPeriod");
+    pRow.appendChild(pBox);
+    extCharts.appendChild(pRow);
+
+    const rRow = div("extend-row");
+    const rBox = div("chart-box", "extRatio");
+    rRow.appendChild(rBox);
+    extCharts.appendChild(rRow);
+
+    function makeDataZoom(recs) {
+        var total = recs.length;
+        var sv = Math.max(0, total - 100);
+        return [
+            { type: "slider", startValue: sv, endValue: total - 1, minValueSpan: 20, maxValueSpan: 200, height: 20, bottom: 6 },
+            { type: "inside", minValueSpan: 20, maxValueSpan: 200 },
+        ];
+    }
+    var trendGrid = { grid: { left: 50, right: 20, top: 55, bottom: 70 } };
+    function trendXD(xd) { return { type: "category", data: xd, axisLabel: { rotate: 45, fontSize: 10 } }; }
+
     try {
-        const resp = await fetch(`${API_BASE}/${currentType}/stats/advanced/normal${dateParams}`).then(r => r.json());
-        if (resp.data && resp.data.stats) {
-            const nc = document.getElementById("advNormalContainer");
-            resp.data.stats.forEach((s, i) => {
-                const div = document.createElement("div");
-                div.className = "chart-box";
-                div.id = "advNormal_" + i;
-                div.style.height = "400px";
-                nc.appendChild(div);
-                const chart = echarts.init(div);
-                chartInstances["advNormal_" + i] = chart;
-                chart.setOption({
-                    title: { text: s.field + " 正态分布拟合 (偏度:" + s.skewness + " 峰度:" + s.kurtosis + ")", left: "center", textStyle: { fontSize:13 } },
-                    tooltip: {},
-                    xAxis: { type: "category", data: s.histogram.bins.map(String) },
-                    yAxis: { type: "value", name: "频次" },
-                    series: [
-                        { type: "bar", data: s.histogram.counts, name: "实际频次", itemStyle: { color: "#a0c4ff" } },
-                    ],
-                });
+        var r = await fetch(API_BASE + "/" + currentType + "/stats/period_list" + dateParams).then(function(r) { return r.json(); });
+        if (r.data && r.data.records) {
+            var recs = r.data.records.reverse();
+            var chart = echarts.init(pBox);
+            chartInstances["extPeriod"] = chart;
+            addHelpBtn(pBox, "extPeriod");
+            chart.setOption({
+                title: { text: "和值跨度走势", left: "center", top: 4, textStyle: { fontSize: 14 } },
+                tooltip: { trigger: "axis" },
+                legend: { data: ["和值", "跨度"], top: 28 },
+                grid: trendGrid,
+                dataZoom: makeDataZoom(recs),
+                xAxis: trendXD(recs.map(function(r) { return r.draw_num; })),
+                yAxis: { type: "value" },
+                series: [
+                    { name: "和值", type: "line", data: recs.map(function(r) { return r.sum_val; }), smooth: true },
+                    { name: "跨度", type: "line", data: recs.map(function(r) { return r.span; }), smooth: true },
+                ],
             });
         }
-    } catch(e) { console.error("高级统计-正态分布加载失败:", e); container.innerHTML = '<div class="empty">高级统计接口尚未部署，等待后端开发</div>'; }
+    } catch(e) { console.error(e); }
+
+    try {
+        var r = await fetch(API_BASE + "/" + currentType + "/stats/ratio" + dateParams).then(function(r) { return r.json(); });
+        if (r.data && r.data.records) {
+            var recs = r.data.records.reverse();
+            var chart = echarts.init(rBox);
+            chartInstances["extRatio"] = chart;
+            addHelpBtn(rBox, "extRatio");
+            chart.setOption({
+                title: { text: "奇偶比/大小比趋势", left: "center", top: 4, textStyle: { fontSize: 14 } },
+                tooltip: { trigger: "axis" },
+                legend: { data: ["奇偶比(奇)", "大小比(大)"], top: 28 },
+                grid: trendGrid,
+                dataZoom: makeDataZoom(recs),
+                xAxis: trendXD(recs.map(function(r) { return r.draw_num; })),
+                yAxis: { type: "value" },
+                series: [
+                    { name: "奇偶比(奇)", type: "line", data: recs.map(function(r) { return Number((r.odd_even_ratio || "0:0").split(":")[0]); }), smooth: true },
+                    { name: "大小比(大)", type: "line", data: recs.map(function(r) { return Number((r.big_small_ratio || "0:0").split(":")[0]); }), smooth: true },
+                ],
+            });
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ========== 高级统计视图（开发中） ==========
+function loadAdvancedView() {
+    document.getElementById("advancedCharts").innerHTML = `<div style="text-align:center;padding:60px 20px;color:#999;">
+        <div style="font-size:48px;margin-bottom:16px;">🚧</div>
+        <div style="font-size:16px;">功能正在开发中</div>
+        <div style="font-size:13px;margin-top:8px;">高级统计指标（标准差、分位数、正态分布）即将上线</div>
+    </div>`;
 }
 
 // ========== 图表渲染工具 ==========
