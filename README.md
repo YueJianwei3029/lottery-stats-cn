@@ -28,7 +28,9 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://gitee.com/yuejianwie/lottery-stats-cn.git
+git clone https://github.com/YueJianwei3029/lottery-stats-cn.git  # GitHub
+# 或
+git clone https://gitee.com/yuejianwie/lottery-stats-cn.git      # Gitee（国内镜像）
 cd lottery_stats_cn
 
 # 2. 设置数据库密码（可选，默认 lottery123）
@@ -38,7 +40,7 @@ cp .env.example .env
 # 3. 启动
 docker compose up -d
 
-# 4. 等待首次数据爬取完成（约 2-3 分钟）
+# 4. 等待首次数据同步完成（约 2-3 分钟）
 docker compose logs -f app
 
 # 5. 访问
@@ -82,7 +84,7 @@ lottery_stats_cn/
 │   │   ├── config.py           # 配置（支持环境变量）
 │   │   ├── database.py         # 数据库连接与 CRUD
 │   │   └── scheduler.py        # 定时调度（首次全量 + 增量）
-│   ├── crawler/                # 5 个彩种数据爬取器
+│   ├── crawler/                # 5 个彩种数据采集器
 │   ├── cleaner/                # 数据清洗与校验
 │   ├── routers/                # 5 个彩种 API 路由
 │   └── services/               # 统计分析服务
@@ -101,8 +103,6 @@ lottery_stats_cn/
 ## API 文档
 
 启动后访问 `http://localhost:8000/docs` 查看 Swagger UI。
-
-## 数据来源
 
 ## 数据来源
 
