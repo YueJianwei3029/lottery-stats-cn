@@ -1,105 +1,241 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>彩票数据统计与可视化系统</title>
-    <link rel="stylesheet" href="css/style.css?v=20260606d">
-    <script src="js/echarts.min.js"></script>
-    <script src="js/config.js?v=20260606d"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#0d1117">
+  <title>彩票数据统计与可视化系统</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/echarts.min.js"></script>
+  <script src="js/config.js"></script>
 </head>
 <body>
-    <!-- 标题栏 -->
-    <header class="header">
-        <h1>彩票数据统计与可视化系统</h1>
-    </header>
 
-    <!-- 主体：左导航 + 右内容 -->
-    <div class="layout">
-
-        <!-- 左侧彩种导航 -->
-        <aside class="sidebar" id="lotteryNav">
-            <div class="nav-item active" data-type="lottery_dlt">超级大乐透</div>
-            <div class="nav-item" data-type="lottery_7xc">七星彩</div>
-            <div class="nav-item" data-type="lottery_ssq">双色球</div>
-            <div class="nav-item" data-type="lottery_pl5">排列5</div>
-            <div class="nav-item" data-type="lottery_pl3">排列3</div>
-        </aside>
-
-        <!-- 右侧主内容 -->
-        <main class="content">
-
-            <!-- 日期栏 -->
-            <div class="query-bar">
-                <label>起始日期:</label>
-                <input type="date" id="dateStart" value="2026-01-01">
-                <span class="query-sep">至</span>
-                <input type="date" id="dateEnd" value="">
-                <button id="queryBtn" class="btn-primary">查询</button>
-            </div>
-
-            <!-- 视图切换按钮 -->
-            <div class="view-bar">
-                <button class="view-btn active" data-view="query">数据查询</button>
-                <button class="view-btn" data-view="stats">基础统计</button>
-                <button class="view-btn" data-view="extend">扩展统计</button>
-                <button class="view-btn" data-view="advanced">高级统计</button>
-            </div>
-
-            <!-- 数据查询视图 -->
-            <section class="panel" id="viewQuery">
-                <div id="tableContainer">
-                    <table class="data-table" id="dataTable">
-                        <thead id="tableHead"></thead>
-                        <tbody id="tableBody"></tbody>
-                    </table>
-                    <div class="pagination" id="pagination">
-                        <button id="prevBtn">上一页</button>
-                        <span id="pageInfo">第 1 页</span>
-                        <button id="nextBtn">下一页</button>
-                        <span id="totalInfo"></span>
-                        <span class="page-size">
-                            每页
-                            <select id="pageSizeSelect">
-                                <option value="10">10</option>
-                                <option value="20" selected>20</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </select>
-                            条
-                        </span>
-                    </div>
-                    <div class="loading" id="tableLoading" style="display:none;">加载中...</div>
-                    <div class="empty" id="tableEmpty" style="display:none;">暂无数据</div>
-                </div>
-            </section>
-
-            <!-- 基础统计视图 -->
-            <section class="panel" id="viewStats" style="display:none;">
-                <div id="statsContainer"><!-- 动态填充图表容器 --></div>
-            </section>
-
-            <!-- 扩展统计视图 -->
-            <section class="panel" id="viewExtend" style="display:none;">
-                <div class="sub-menu" id="extendSubMenu">
-                    <button class="sub-btn active" data-sub="dist">分布分析</button>
-                    <button class="sub-btn" data-sub="trend">走势分析</button>
-                </div>
-                <div id="extendContent">
-                    <!-- 动态内容 -->
-                </div>
-            </section>
-
-            <!-- 高级统计视图 -->
-            <section class="panel" id="viewAdvanced" style="display:none;">
-                <div id="advancedCharts">
-                    <!-- 开发中 -->
-                </div>
-            </section>
-
-        </main>
+  <!-- ████ 顶部导航栏 ████ -->
+  <header class="header">
+    <div class="header-brand">
+      <!-- 汉堡菜单（移动端） -->
+      <button class="menu-toggle" id="menuToggle" aria-label="打开菜单">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="header-logo">彩</div>
+      <div class="header-title">彩票数据统计与可视化系统</div>
     </div>
+    <div class="header-right">
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        数据已就绪
+      </div>
+    </div>
+  </header>
 
-    <script src="js/app.js?v=20260606l"></script>
+  <!-- ████ 遮罩层 ████ -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ████ 主体布局 ████ -->
+  <div class="layout">
+
+    <!-- ██ 左侧彩种导航 ██ -->
+    <aside class="sidebar" id="lotteryNav">
+      <div class="sidebar-section">
+        <div class="sidebar-label">彩种选择</div>
+
+        <div class="nav-item active" data-type="lottery_dlt">
+          <div class="nav-icon">🎯</div>
+          <span>超级大乐透</span>
+          <span class="nav-badge">DLT</span>
+        </div>
+
+        <div class="nav-item" data-type="lottery_7xc">
+          <div class="nav-icon">⭐</div>
+          <span>七星彩</span>
+          <span class="nav-badge">7XC</span>
+        </div>
+
+        <div class="nav-item" data-type="lottery_ssq">
+          <div class="nav-icon">🔴</div>
+          <span>双色球</span>
+          <span class="nav-badge">SSQ</span>
+        </div>
+
+        <div class="nav-item" data-type="lottery_pl5">
+          <div class="nav-icon">🔢</div>
+          <span>排列5</span>
+          <span class="nav-badge">PL5</span>
+        </div>
+
+        <div class="nav-item" data-type="lottery_pl3">
+          <div class="nav-icon">🎲</div>
+          <span>排列3</span>
+          <span class="nav-badge">PL3</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ██ 右侧主内容区 ██ -->
+    <main class="content">
+
+      <!-- 查询工具栏 -->
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <span class="toolbar-label">起始日期</span>
+          <input type="date" class="input-date" id="dateStart" value="2026-01-01">
+        </div>
+        <span class="toolbar-sep">—</span>
+        <div class="toolbar-group">
+          <span class="toolbar-label">截止日期</span>
+          <input type="date" class="input-date" id="dateEnd">
+        </div>
+        <div class="toolbar-divider"></div>
+        <button class="btn btn-primary" id="queryBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          查询
+        </button>
+      </div>
+
+      <!-- 视图切换 -->
+      <div class="view-bar">
+        <button class="view-btn active" data-view="query">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <span class="view-btn-text">数据查询</span>
+        </button>
+        <button class="view-btn" data-view="stats">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="view-btn-text">基础统计</span>
+        </button>
+        <button class="view-btn" data-view="extend">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span class="view-btn-text">扩展统计</span>
+        </button>
+        <button class="view-btn" data-view="advanced">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span class="view-btn-text">高级统计</span>
+        </button>
+      </div>
+
+      <!-- ▌视图：数据查询 -->
+      <section class="panel" id="viewQuery">
+        <div class="panel-header">
+          <div class="panel-title">
+            <div class="panel-title-dot"></div>
+            开奖数据
+          </div>
+          <div class="page-size-group">
+            每页
+            <select class="page-size-select" id="pageSizeSelect">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+            条
+          </div>
+        </div>
+
+        <!-- 加载中 -->
+        <div class="loading-state" id="tableLoading" style="display:none;">
+          <div class="spinner"></div>
+          <div class="loading-text">正在加载数据...</div>
+        </div>
+
+        <!-- 空态 -->
+        <div class="empty-state" id="tableEmpty" style="display:none;">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">暂无数据</div>
+          <div class="empty-sub">请尝试调整查询日期范围</div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrapper" id="tableContainer">
+          <table class="data-table" id="dataTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination">
+          <button class="page-btn" id="prevBtn" title="上一页">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="page-info">
+            第 <strong id="pageInfo">1</strong> / <strong id="totalPages">1</strong> 页
+          </div>
+          <button class="page-btn" id="nextBtn" title="下一页">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <div class="total-info" id="totalInfo"></div>
+        </div>
+      </section>
+
+      <!-- ▌视图：基础统计 -->
+      <section class="panel hidden" id="viewStats">
+        <div class="panel-header">
+          <div class="panel-title">
+            <div class="panel-title-dot" style="background: var(--green); box-shadow: 0 0 6px var(--green);"></div>
+            基础统计
+          </div>
+        </div>
+        <div id="statsContainer"></div>
+      </section>
+
+      <!-- ▌视图：扩展统计 -->
+      <section class="panel hidden" id="viewExtend">
+        <div class="panel-header">
+          <div class="panel-title">
+            <div class="panel-title-dot" style="background: var(--orange); box-shadow: 0 0 6px var(--orange);"></div>
+            扩展统计
+          </div>
+          <div class="sub-menu" id="extendSubMenu" style="margin:0;padding:0;border:none;">
+            <button class="sub-btn active" data-sub="dist">分布分析</button>
+            <button class="sub-btn" data-sub="trend">走势分析</button>
+          </div>
+        </div>
+        <div id="extendContent"></div>
+      </section>
+
+      <!-- 视图：高级统计 -->
+      <section class="panel hidden" id="viewAdvanced">
+        <div class="panel-header">
+          <div class="panel-title">
+            <div class="panel-title-dot" style="background: var(--purple); box-shadow: 0 0 6px var(--purple);"></div>
+            高级统计
+          </div>
+          <div class="sub-menu" id="advancedSubMenu" style="margin:0;padding:0;border:none;">
+            <button class="sub-btn active" data-adv-sub="scatter">散点分布</button>
+            <button class="sub-btn" data-adv-sub="lln">大数定律</button>
+            <button class="sub-btn" data-adv-sub="normal">正态分布</button>
+          </div>
+        </div>
+        <div id="advancedCharts" style="min-height:400px;"></div>
+      </section>
+
+
+    </main>
+  </div>
+
+  <!-- ████ 移动端底部导航 ████ -->
+  <nav class="mobile-nav" id="mobileNav">
+    <div class="mobile-nav-inner">
+      <div class="mobile-nav-btn active" data-view="query">
+        <div class="mobile-nav-icon">📋</div>
+        <span>查询</span>
+      </div>
+      <div class="mobile-nav-btn" data-view="stats">
+        <div class="mobile-nav-icon">📊</div>
+        <span>统计</span>
+      </div>
+      <div class="mobile-nav-btn" data-view="extend">
+        <div class="mobile-nav-icon">📈</div>
+        <span>扩展</span>
+      </div>
+      <div class="mobile-nav-btn" data-view="advanced">
+        <div class="mobile-nav-icon">🔬</div>
+        <span>高级</span>
+      </div>
+    </div>
+  </nav>
+
+  <script src="js/app.js?v=20260607e"></script>
 </body>
 </html>

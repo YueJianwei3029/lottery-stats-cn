@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import API_HOST, API_PORT, LOG_LEVEL
 from app.core.database import db
 from app.core.scheduler import start_scheduler, stop_scheduler
-from app.routers import lottery_pl3, lottery_ssq, lottery_pl5, lottery_7xc, lottery_dlt
+from app.core.router_factory import RouterFactory, LOTTERY_CONFIGS
 
 # 日志
 logging.basicConfig(
@@ -53,12 +53,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册 5 个子路由
-app.include_router(lottery_pl3.router)
-app.include_router(lottery_ssq.router)
-app.include_router(lottery_pl5.router)
-app.include_router(lottery_7xc.router)
-app.include_router(lottery_dlt.router)
+# 注册 5 个子路由（RouterFactory 自动生成）
+for cfg in LOTTERY_CONFIGS:
+    app.include_router(RouterFactory.build(cfg))
 
 # 挂载前端静态文件
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

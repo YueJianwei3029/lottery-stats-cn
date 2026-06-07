@@ -102,7 +102,7 @@ def hot_cold_stats(date: str = None, end_date: str = None) -> dict:
 
     if not date and not end_date:
         records = records[:50]
-    arr = _records_to_array(recent, NUM_FIELDS)
+    arr = _records_to_array(records, NUM_FIELDS)
     valid = arr[~np.isnan(arr)].astype(int)
 
     values, counts = np.unique(valid, return_counts=True)
