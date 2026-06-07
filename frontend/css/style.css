@@ -1050,5 +1050,5 @@ body {
 
 /* ================================================================
 /* ── 工具类 ───────────────────────────────────────────────────── */
-.hidden { display: none !important; }
+.hidden { display: none; }
 .flex-center { display: flex; align-items: center; justify-content: center; }

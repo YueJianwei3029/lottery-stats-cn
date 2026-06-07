@@ -8,7 +8,7 @@
 |------|------|
 | 名称 | 彩票数据统计与可视化系统 |
 | 目标 | 5 类彩票公开数据：采集 → 清洗 → 存储 → API → 可视化 |
-| 当前阶段 | **Phase 10 重构完成**（前后端分离 + numpy 加速 + 5 彩种扩展统计） |
+| 当前阶段 | **Phase 11 完成**（路由工厂重构 + 高级统计：散点图/大数定律/正态分布） |
 | 本地 OS | Windows + PowerShell |
 | 云域名 | www.yuejw.top |
 
@@ -31,9 +31,9 @@
 - **数据查询**：按日期区间分页查询历史开奖数据
 - **基础统计**：号码频率分布、奇偶分布、大小分布，按位置拆分
 - **扩展统计**：全部 5 彩种均已补齐（热力图、冷热号、和值/跨度、奇偶比、012路、趋势图等 4 个标准端点）
-- **高级统计**：后端已就绪（标准差/百分位/正态分布），前端占位待启用
+- **高级统计**：散点分布 / 大数定律（运行均值+置信带） / 正态分布拟合
 - **定时采集**：每 24 小时自动增量更新
-- **前端 4 Tab**：数据查询 / 基础统计 / 扩展统计 / 高级统计（🚧开发中）
+- **前端 4 Tab**：数据查询 / 基础统计 / 扩展统计 / 高级统计
 - **图表交互**：dataZoom 滑块（20~200 期）、右上角 `?` 统计原理说明
 - **API 基地址**：通过 `config.js` 自动切换本地/云端
 
@@ -98,17 +98,16 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 lottery_stats_cn/
 ├── app/
 │   ├── main.py                 # FastAPI入口 + /api/health
-│   ├── core/                   # config / database / scheduler
+│   ├── core/                   # config / database / scheduler / router_factory
 │   ├── crawler/                # 5个彩种数据采集器
 │   ├── cleaner/                # 数据清洗与校验
-│   ├── routers/                # 5个彩种API路由（含扩展+高级端点）
 │   └── services/
 │       ├── base_stats.py       # 通用统计（numpy向量化）
 │       ├── dlt_stats.py        # 大乐透扩展统计
 │       ├── qxc_stats.py        # 七星彩扩展统计
 │       ├── ssq_stats.py        # 双色球扩展统计
 │       ├── pos_stats.py        # PL3/PL5 共用扩展统计
-│       └── advanced_stats.py   # 高级统计（std/percentile/normal，后端已就绪）
+│       └── advanced_stats.py   # 高级统计（scatter/lln/normal/std/percentile）
 ├── frontend/
 │   ├── index.html              # 4Tab + 子菜单
 │   ├── css/style.css
