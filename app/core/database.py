@@ -55,17 +55,17 @@ CREATE_TABLE_SQL = {
             id INT AUTO_INCREMENT PRIMARY KEY,
             draw_num VARCHAR(10) NOT NULL UNIQUE COMMENT '期号',
             draw_date DATE NOT NULL COMMENT '开奖日期',
-            num_1 TINYINT NOT NULL COMMENT '基本号码1',
-            num_2 TINYINT NOT NULL COMMENT '基本号码2',
-            num_3 TINYINT NOT NULL COMMENT '基本号码3',
-            num_4 TINYINT NOT NULL COMMENT '基本号码4',
-            num_5 TINYINT NOT NULL COMMENT '基本号码5',
-            num_6 TINYINT NOT NULL COMMENT '基本号码6',
-            num_7 TINYINT NOT NULL COMMENT '基本号码7',
+            num_1 TINYINT NOT NULL COMMENT '前区1(0-9)',
+            num_2 TINYINT NOT NULL COMMENT '前区2(0-9)',
+            num_3 TINYINT NOT NULL COMMENT '前区3(0-9)',
+            num_4 TINYINT NOT NULL COMMENT '前区4(0-9)',
+            num_5 TINYINT NOT NULL COMMENT '前区5(0-9)',
+            num_6 TINYINT NOT NULL COMMENT '前区6(0-9)',
+            back_1 TINYINT NOT NULL COMMENT '后区(0-14)',
             sales_amount DECIMAL(15,2) DEFAULT NULL COMMENT '销量',
             prize_pool DECIMAL(15,2) DEFAULT NULL COMMENT '奖池',
             INDEX idx_draw_date (draw_date)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='七乐彩';
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='七星彩';
     """,
     "lottery_dlt": """
         CREATE TABLE IF NOT EXISTS lottery_dlt (
@@ -135,15 +135,16 @@ class Database:
 
     # ---------- 初始化 ----------
     def init_database(self):
-        """首次启动：创建数据库 + 5 张表（IF NOT EXISTS 幂等安全）"""
-        logger.info("[DB] 初始化数据库...")
+        """每次启动：删除旧表 → 重新建表（数据由爬虫全量采集）"""
+        logger.info("[DB] 初始化数据库（删表重建模式）...")
         self._ensure_db()
         conn = self._connect()
         try:
             with conn.cursor() as cur:
                 for table_name, sql in CREATE_TABLE_SQL.items():
+                    cur.execute(f"DROP TABLE IF EXISTS `{table_name}`")
                     cur.execute(sql)
-                    logger.info(f"[DB] 表 {table_name} 就绪")
+                    logger.info(f"[DB] 表 {table_name} 已重建")
         finally:
             conn.close()
         logger.info("[DB] 数据库初始化完成")

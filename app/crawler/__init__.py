@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-"""爬虫模块入口：统一调用 5 个彩种爬虫"""
+"""爬虫模块入口：统一调用 5 个彩种爬虫
+
+注：5 个 Crawler 子类已合并到 factory.py，本文件仅做注册表编排。
+"""
 
 import time
 import logging
-from app.crawler.pl3_crawler import Pl3Crawler
-from app.crawler.ssq_crawler import SsqCrawler
-from app.crawler.pl5_crawler import Pl5Crawler
-from app.crawler.crawler_7xc import QxcCrawler
-from app.crawler.dlt_crawler import DltCrawler
+from app.crawler.factory import Pl3Crawler, SsqCrawler, Pl5Crawler, QxcCrawler, DltCrawler
 from app.cleaner.pl3_cleaner import Pl3Cleaner
 from app.cleaner.ssq_cleaner import SsqCleaner
 from app.cleaner.pl5_cleaner import Pl5Cleaner
-from app.cleaner.cleaner_7xc import QxcCleaner
+from app.cleaner.qxc_cleaner import QxcCleaner
 from app.cleaner.dlt_cleaner import DltCleaner
 from app.core.database import db
 

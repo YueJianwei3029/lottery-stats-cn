@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from fastapi import APIRouter, Query
 from app.core.database import db
 from app.services.base_stats import base_stats
-from app.services.advanced_stats import std_dev_stats, percentile_stats, normal_dist_stats, scatter_data, lln_data
+from app.services.advanced_stats import std_dev_stats, percentile_stats, scatter_data, lln_data
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,6 @@ class LotteryConfig:
     num_fields: list       # 号码字段列表
     ext_module: str        # 扩展统计模块路径，如 "app.services.dlt_stats"
     uses_pos_stats: bool = False      # 是否使用 pos_stats (PL3/PL5)
-    has_normal_advanced: bool = False # 是否支持 normal 高级统计
 
 
 class RouterFactory:
@@ -109,13 +108,6 @@ class RouterFactory:
             return {"code": 200, "message": "success",
                     "data": percentile_stats(table, date=date, end_date=end_date)}
 
-        # ---- 高级：normal ----
-        @router.get("/stats/advanced/normal")
-        def advanced_normal(date: str = Query(default=None),
-                            end_date: str = Query(default=None)):
-            return {"code": 200, "message": "success",
-                    "data": normal_dist_stats(table, date=date, end_date=end_date)}
-
         # ---- 高级：scatter（散点图） ----
         @router.get("/stats/advanced/scatter")
         def advanced_scatter(date: str = Query(default=None),
@@ -146,7 +138,6 @@ LOTTERY_CONFIGS = [
         tag="超级大乐透",
         num_fields=["front_1","front_2","front_3","front_4","front_5","back_1","back_2"],
         ext_module="app.services.dlt_stats",
-        has_normal_advanced=True,
     ),
     LotteryConfig(
         key="ssq",
@@ -154,13 +145,12 @@ LOTTERY_CONFIGS = [
         tag="双色球",
         num_fields=["red_1","red_2","red_3","red_4","red_5","red_6","blue_1"],
         ext_module="app.services.ssq_stats",
-        has_normal_advanced=True,
     ),
     LotteryConfig(
         key="7xc",
         table="lottery_7xc",
         tag="七星彩",
-        num_fields=["num_1","num_2","num_3","num_4","num_5","num_6","num_7"],
+        num_fields=["num_1","num_2","num_3","num_4","num_5","num_6","back_1"],
         ext_module="app.services.qxc_stats",
     ),
     LotteryConfig(

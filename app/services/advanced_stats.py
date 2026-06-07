@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""高级统计服务：标准差、分位数、正态分布拟合、散点图、大数定律 - numpy 加速版"""
+"""高级统计服务：标准差、分位数、散点图、大数定律 - numpy 加速版"""
 
 import logging
 import numpy as np
 from app.core.database import db
+from app.core.numpy_utils import records_to_array
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ TABLE_FIELDS = {
     "lottery_pl3": ["num_1", "num_2", "num_3"],
     "lottery_pl5": ["num_1", "num_2", "num_3", "num_4", "num_5"],
     "lottery_ssq": ["red_1", "red_2", "red_3", "red_4", "red_5", "red_6", "blue_1"],
-    "lottery_7xc": ["num_1", "num_2", "num_3", "num_4", "num_5", "num_6", "num_7"],
+    "lottery_7xc": ["num_1", "num_2", "num_3", "num_4", "num_5", "num_6", "back_1"],
     "lottery_dlt": ["front_1", "front_2", "front_3", "front_4", "front_5", "back_1", "back_2"],
 }
 
@@ -27,24 +28,13 @@ EXPECTED_AVG = {
         round(4*34/7, 2), round(5*34/7, 2), round(6*34/7, 2),
         8.5,  # blue
     ],
-    "lottery_7xc": [4.5]*7,
+    "lottery_7xc": [4.5]*6 + [7.0],  # 前区6位0-9均值4.5，后区0-14均值7.0
     "lottery_dlt": [
         round(1*36/6, 1), round(2*36/6, 1), round(3*36/6, 1),
         round(4*36/6, 1), round(5*36/6, 1),               # front
         round(1*13/3, 2), round(2*13/3, 2),                # back
     ],
 }
-
-
-def _records_to_array(records, fields):
-    data = []
-    for r in records:
-        row = []
-        for f in fields:
-            v = r.get(f)
-            row.append(v if v is not None else np.nan)
-        data.append(row)
-    return np.array(data, dtype=float)
 
 
 def std_dev_stats(table: str, date=None, end_date=None) -> dict:
@@ -57,7 +47,7 @@ def std_dev_stats(table: str, date=None, end_date=None) -> dict:
     if not records:
         return {"fields": fields, "stats": []}
 
-    arr = _records_to_array(records, fields)
+    arr = records_to_array(records, fields)
     stats = []
 
     for i, f in enumerate(fields):
@@ -89,7 +79,7 @@ def percentile_stats(table: str, date=None, end_date=None) -> dict:
     if not records:
         return {"fields": fields, "stats": []}
 
-    arr = _records_to_array(records, fields)
+    arr = records_to_array(records, fields)
     stats = []
 
     for i, f in enumerate(fields):
@@ -107,53 +97,6 @@ def percentile_stats(table: str, date=None, end_date=None) -> dict:
 
     return {"fields": fields, "stats": stats}
 
-
-def normal_dist_stats(table: str, date=None, end_date=None) -> dict:
-    """正态分布拟合：偏度/峰度 + 直方图数据"""
-    fields = TABLE_FIELDS.get(table, [])
-    if not fields:
-        return {"fields": [], "stats": []}
-
-    records = db.fetch_all(table, date=date, end_date=end_date)
-    if not records:
-        return {"fields": fields, "stats": []}
-
-    arr = _records_to_array(records, fields)
-    stats = []
-
-    for i, f in enumerate(fields):
-        col = arr[:, i]
-        valid = col[~np.isnan(col)]
-        if len(valid) < 2:
-            stats.append({"field": f, "mean": 0, "std": 0, "skewness": 0, "kurtosis": 0,
-                          "histogram": {"bins": [], "counts": []}})
-            continue
-
-        mean_val = np.mean(valid)
-        std_val = np.std(valid, ddof=1)
-        if std_val == 0:
-            skewness = 0.0
-            kurtosis = 0.0
-        else:
-            z = (valid - mean_val) / std_val
-            skewness = round(float(np.mean(z ** 3)), 3)
-            kurtosis = round(float(np.mean(z ** 4) - 3), 3)
-
-        # 直方图
-        n_bins = min(15, max(5, int(len(valid) ** 0.5)))
-        hist_counts, hist_edges = np.histogram(valid, bins=n_bins)
-        hist_bins = [round((hist_edges[j] + hist_edges[j + 1]) / 2, 1) for j in range(n_bins)]
-
-        stats.append({
-            "field": f,
-            "mean": round(float(mean_val), 2),
-            "std": round(float(std_val), 2),
-            "skewness": skewness,
-            "kurtosis": kurtosis,
-            "histogram": {"bins": hist_bins, "counts": [int(c) for c in hist_counts]},
-        })
-
-    return {"fields": fields, "stats": stats}
 
 
 # ============================================================

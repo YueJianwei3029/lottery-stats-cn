@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """清洗基类"""
 
-import re
 import logging
 from abc import ABC, abstractmethod
 
