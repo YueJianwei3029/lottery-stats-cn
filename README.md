@@ -8,7 +8,7 @@
 |------|------|
 | 名称 | 彩票数据统计与可视化系统 |
 | 目标 | 5 类彩票公开数据：采集 → 清洗 → 存储 → API → 可视化 |
-| 当前阶段 | **Phase 11 完成**（路由工厂重构 + 高级统计：散点图/大数定律/正态分布） |
+| 当前阶段 | **Phase 12 完成**（七星彩前后区拆分 + 图表标签统一 + 深色/浅色双主题切换） |
 | 本地 OS | Windows + PowerShell |
 | 云域名 | www.yuejw.top |
 
@@ -28,14 +28,15 @@
 ## 功能特性
 
 - **5 种彩票**：超级大乐透、七星彩、双色球、排列5、排列3
-- **数据查询**：按日期区间分页查询历史开奖数据
-- **基础统计**：号码频率分布、奇偶分布、大小分布，按位置拆分
-- **扩展统计**：全部 5 彩种均已补齐（热力图、冷热号、和值/跨度、奇偶比、012路、趋势图等 4 个标准端点）
-- **高级统计**：散点分布 / 大数定律（运行均值+置信带） / 正态分布拟合
+- **数据查询**：按日期区间分页查询历史开奖数据，支持 10/20/50 条切换
+- **基础统计**：号码频率分布、奇偶分布、大小分布，大乐透/七星彩/双色球按前后区分栏展示
+- **扩展统计**：全部 5 彩种均已补齐（热力图、冷热号、和值跨度走势、奇偶比大小比趋势）
+- **高级统计**：散点分布 / 大数定律（运行均值+置信带）
 - **定时采集**：每 24 小时自动增量更新
 - **前端 4 Tab**：数据查询 / 基础统计 / 扩展统计 / 高级统计
-- **图表交互**：dataZoom 滑块（20~200 期）、右上角 `?` 统计原理说明
-- **API 基地址**：通过 `config.js` 自动切换本地/云端
+- **双主题切换**：深色/浅色主题一键切换，自动记忆偏好
+- **图表交互**：dataZoom 滑块、`?` 统计原理说明、热力图数字显示切换
+- **API 基地址**：通过 `config.js` 自动切换本机/云端
 
 ## 架构
 
@@ -98,28 +99,28 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 lottery_stats_cn/
 ├── app/
 │   ├── main.py                 # FastAPI入口 + /api/health
-│   ├── core/                   # config / database / scheduler / router_factory
-│   ├── crawler/                # 5个彩种数据采集器
-│   ├── cleaner/                # 数据清洗与校验
+│   ├── core/                   # config / database / scheduler / router_factory / numpy_utils
+│   ├── crawler/                # 爬虫工厂 + 基类（5彩种动态生成）
+│   ├── cleaner/                # 5个彩种数据清洗器（pl3/pl5/ssq/dlt/qxc）
 │   └── services/
-│       ├── base_stats.py       # 通用统计（numpy向量化）
-│       ├── dlt_stats.py        # 大乐透扩展统计
-│       ├── qxc_stats.py        # 七星彩扩展统计
+│       ├── base_stats.py       # 通用统计（numpy向量化，5彩种共用）
+│       ├── dlt_stats.py        # 大乐透扩展统计（热力图/冷热号/走势/奇偶比）
+│       ├── qxc_stats.py        # 七星彩扩展统计（前后区分开）
 │       ├── ssq_stats.py        # 双色球扩展统计
 │       ├── pos_stats.py        # PL3/PL5 共用扩展统计
-│       └── advanced_stats.py   # 高级统计（scatter/lln/normal/std/percentile）
+│       └── advanced_stats.py   # 高级统计（scatter/lln/std/percentile）
 ├── frontend/
-│   ├── index.html              # 4Tab + 子菜单
-│   ├── css/style.css
+│   ├── index.html              # 4Tab + 子菜单 + 主题切换
+│   ├── css/style.css           # 深色/浅色双主题变量
 │   └── js/
 │       ├── config.js           # API基地址自动切换（本地/云端）
-│       ├── app.js              # 主逻辑（视图切换 + 图表渲染）
+│       ├── app.js              # 主逻辑（视图切换 + 图表渲染 + 主题控制）
 │       └── echarts.min.js
 ├── nginx/
 │   └── default.conf            # 反向代理配置
 ├── docker-compose.yml          # 3容器编排
 ├── Dockerfile
-├── requirements.txt            # 含 numpy>=1.26.0
+├── requirements.txt            # fastapi/uvicorn/pymysql/numpy/apscheduler
 ├── start.bat / start.ps1       # 本地一键启动脚本
 ```
 
@@ -143,6 +144,8 @@ lottery_stats_cn/
 - PowerShell 不支持 `&&` 串联，用 `;` 替代
 - Git 多远程：`git push` → Gitee，`git push github master` → GitHub
 - 扩展统计后端端点统一为：`position` / `hot_cold` / `period_list` / `ratio`
+- 前端名称映射：表格表头、图表标题、图例标签必须保持一致（通过 `buildPosName` / `buildPosLabels` 统一）
+- 七星彩特殊处理：前后区分开统计，图表和表头均使用"前1~前6" + "后区"命名
 
 ## 数据来源 & License
 
