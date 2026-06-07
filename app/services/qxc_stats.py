@@ -26,7 +26,7 @@ def _get_trend_records(date=None, end_date=None, limit=500):
     """走势图专用：限制返回条数，避免数据过载"""
     records = db.fetch_all("lottery_7xc", date=date, end_date=end_date)
     if not date and not end_date:
-        return records[:limit]
+        return records[-limit:]
     return records
 
 
@@ -109,6 +109,8 @@ def period_list_stats(date=None, end_date=None) -> dict:
         period_list.append({
             "draw_num": r.get("draw_num"),
             "draw_date": str(r.get("draw_date", "")),
+            "sum_val": int(np.sum(front)),
+            "span": int(np.max(front) - np.min(front)),
             "front_sum": int(np.sum(front)),
             "front_span": int(np.max(front) - np.min(front)),
             "back_val": int(back),
@@ -144,6 +146,8 @@ def ratio_stats(date=None, end_date=None) -> dict:
 
         result.append({
             "draw_num": r.get("draw_num"),
+            "odd_even_ratio": f"{f_odd}:{6 - f_odd}",
+            "big_small_ratio": f"{f_big}:{6 - f_big}",
             "front_odd_even": f"{f_odd}:{6 - f_odd}",
             "front_big_small": f"{f_big}:{6 - f_big}",
             "back_odd_even": f"{b_odd}:{1 - b_odd}",
