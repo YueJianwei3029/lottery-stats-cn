@@ -10,7 +10,7 @@ $Host.UI.RawUI.WindowTitle = "Lottery Stats System"
 Clear-Host
 Write-Host ""
 Write-Host "====================================================" -ForegroundColor Cyan
-Write-Host "       Lottery Stats & Visual System v1.0.0" -ForegroundColor Yellow
+Write-Host "       Lottery Stats & Visual System v1.2.0" -ForegroundColor Yellow
 Write-Host "====================================================" -ForegroundColor Cyan
 Write-Host ""
 

@@ -19,5 +19,6 @@ venv/
 .DS_Store
 Thumbs.db
 
-# 项目文档（不含入仓库）
-other/
+# 备份
+frontend_backup_20260607/
+other/frontend_test/
