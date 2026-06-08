@@ -10,11 +10,8 @@
 不改动任何调用方代码。
 """
 
-import logging
 from app.crawler.base_crawler import BaseCrawler
 from app.core.config import DATA_SOURCES
-
-logger = logging.getLogger(__name__)
 
 
 def make_crawler(table_key: str) -> type:

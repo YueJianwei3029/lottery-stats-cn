@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """排列3/排列5 共用扩展统计（4项）- numpy 加速版"""
 
-import logging
 import numpy as np
 from app.core.database import db
 from app.core.numpy_utils import records_to_array
-
-logger = logging.getLogger(__name__)
 
 PL3_FIELDS = ["num_1", "num_2", "num_3"]
 PL5_FIELDS = ["num_1", "num_2", "num_3", "num_4", "num_5"]

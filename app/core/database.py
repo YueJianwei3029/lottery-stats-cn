@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """数据库模块：建库建表、连接管理、CRUD"""
 
+import os
 import pymysql
 import logging
 from app.core.config import DB_CONFIG, DB_NAME
@@ -133,18 +134,47 @@ class Database:
         finally:
             conn.close()
 
+    # ---------- 表名校验 ----------
+    @staticmethod
+    def _validate_table(table: str):
+        """白名单校验表名，防止 SQL 注入"""
+        if table not in CREATE_TABLE_SQL:
+            raise ValueError(f"Invalid table name: {table}")
+
+    # ---------- 日期序列化 ----------
+    @staticmethod
+    def _serialize_records(records: list):
+        """将记录中的 date/datetime 对象转为 ISO 字符串"""
+        for r in records:
+            for k, v in r.items():
+                if hasattr(v, "isoformat"):
+                    r[k] = v.isoformat()
+
     # ---------- 初始化 ----------
-    def init_database(self):
-        """每次启动：删除旧表 → 重新建表（数据由爬虫全量采集）"""
-        logger.info("[DB] 初始化数据库（删表重建模式）...")
+    def init_database(self, mode=None):
+        """初始化数据库
+
+        mode:
+          - "rebuild"：删表重建（开发模式，数据由爬虫全量采集）
+          - "ensure"：仅确保表存在，不删除数据（生产模式）
+        """
+        mode = mode or os.getenv("INIT_MODE", "ensure")
+        if mode == "rebuild":
+            logger.info("[DB] 初始化数据库（删表重建模式）...")
+        else:
+            logger.info("[DB] 初始化数据库（确保表存在模式）...")
         self._ensure_db()
         conn = self._connect()
         try:
             with conn.cursor() as cur:
                 for table_name, sql in CREATE_TABLE_SQL.items():
-                    cur.execute(f"DROP TABLE IF EXISTS `{table_name}`")
-                    cur.execute(sql)
-                    logger.info(f"[DB] 表 {table_name} 已重建")
+                    if mode == "rebuild":
+                        cur.execute(f"DROP TABLE IF EXISTS `{table_name}`")
+                        cur.execute(sql)
+                        logger.info(f"[DB] 表 {table_name} 已重建")
+                    else:
+                        cur.execute(sql)
+                        logger.info(f"[DB] 表 {table_name} 已确认存在")
         finally:
             conn.close()
         logger.info("[DB] 数据库初始化完成")
@@ -152,6 +182,7 @@ class Database:
     # ---------- 查询 ----------
     def query(self, table: str, date: str = None, end_date: str = None, page: int = 1, page_size: int = 20) -> dict:
         """分页查询，支持日期区间"""
+        self._validate_table(table)
         conn = self._connect()
         try:
             with conn.cursor(pymysql.cursors.DictCursor) as cur:
@@ -167,28 +198,21 @@ class Database:
                     where_params + [page_size, offset],
                 )
                 records = cur.fetchall()
-
-                for r in records:
-                    for k, v in r.items():
-                        if hasattr(v, "isoformat"):
-                            r[k] = v.isoformat()
-
+                self._serialize_records(records)
                 return {"total": total, "page": page, "page_size": page_size, "records": records}
         finally:
             conn.close()
 
     def fetch_all(self, table: str, date: str = None, end_date: str = None) -> list:
         """获取全表数据（统计用），支持日期区间"""
+        self._validate_table(table)
         conn = self._connect()
         try:
             with conn.cursor(pymysql.cursors.DictCursor) as cur:
                 where_clause, where_params = _build_date_where(date, end_date)
                 cur.execute(f"SELECT * FROM `{table}` {where_clause} ORDER BY draw_num DESC", where_params)
                 records = cur.fetchall()
-                for r in records:
-                    for k, v in r.items():
-                        if hasattr(v, "isoformat"):
-                            r[k] = v.isoformat()
+                self._serialize_records(records)
                 return records
         finally:
             conn.close()
@@ -205,6 +229,7 @@ class Database:
         if not records:
             return 0
 
+        self._validate_table(table)
         conn = self._connect()
         try:
             columns = list(records[0].keys())

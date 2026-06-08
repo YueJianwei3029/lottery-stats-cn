@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """高级统计服务：标准差、分位数、散点图、大数定律 - numpy 加速版"""
 
-import logging
 import numpy as np
 from app.core.database import db
 from app.core.numpy_utils import records_to_array
-
-logger = logging.getLogger(__name__)
 
 # 各彩种字段
 TABLE_FIELDS = {

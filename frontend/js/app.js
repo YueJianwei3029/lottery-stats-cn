@@ -378,7 +378,7 @@ async function loadQuery() {
         const resp = await fetch(fullUrl);
         const json = await resp.json();
         const data = json.data;
-        console.log("[query]", currentType, "sample:", data.records && data.records[0]);
+        // console.debug("[query]", currentType, "sample:", data.records && data.records[0]);
 
         if (!data || !data.records || data.records.length === 0) {
             tableLoading.style.display = "none";
@@ -465,7 +465,10 @@ function renderTable(records) {
             const cls = getBallClass(k);
             var nc = getNarrowClass(k);
             if (cls && val !== "-") {
-                return `<td class="${nc}"><span class="num-ball ${cls}">${String(val).padStart(2, "0")}</span></td>`;
+                // 七星彩/排列3/排列5 单数字显示(0-9)，不补零；大乐透/双色球两位显示
+                var needPad = (currentType !== "lottery_7xc" && currentType !== "lottery_pl3" && currentType !== "lottery_pl5");
+                var displayVal = needPad ? String(val).padStart(2, "0") : String(val);
+                return `<td class="${nc}"><span class="num-ball ${cls}">${displayVal}</span></td>`;
             }
             return `<td class="${nc}">${val}</td>`;
         }).join("") + "</tr>"
@@ -483,7 +486,7 @@ async function loadStats() {
         const resp = await fetch(`${API_BASE}/${currentType}/stats${dateParams}`);
         const json = await resp.json();
         const data = json.data;
-        console.log("[stats]", currentType, "fields:", data && data.fields, "freq keys:", data && data.freq && Object.keys(data.freq));
+        // console.debug("[stats]", currentType, "fields:", data && data.fields, "freq keys:", data && data.freq && Object.keys(data.freq));
         if (!data || !data.fields) {
             container.innerHTML = '<div class="empty-state"><div class="empty-text">暂无统计数据</div></div>';
             return;
@@ -627,29 +630,24 @@ function buildPosLabels(fields) {
     return fields.map(f => map[f] || f);
 }
 
+// 位置名映射表（单一数据源，buildHeatmapLabels 和 buildPosName 共用）
+var POSITION_NAMES = {
+    lottery_dlt: ["前区1","前区2","前区3","前区4","前区5","后区1","后区2"],
+    lottery_ssq: ["红球1","红球2","红球3","红球4","红球5","红球6","蓝球"],
+    lottery_pl3: ["百位","十位","个位"],
+    lottery_pl5: ["万位","千位","百位","十位","个位"],
+    lottery_7xc: ["前1","前2","前3","前4","前5","前6","后区"],
+};
+
 // 热力图纵坐标标签 — 根据彩种类型映射
 function buildHeatmapLabels(positions, lotType) {
-    var MAPS = {
-        lottery_dlt: ["前区1","前区2","前区3","前区4","前区5","后区1","后区2"],
-        lottery_ssq: ["红球1","红球2","红球3","红球4","红球5","红球6","蓝球"],
-        lottery_pl3: ["百位","十位","个位"],
-        lottery_pl5: ["万位","千位","百位","十位","个位"],
-        lottery_7xc: ["前1","前2","前3","前4","前5","前6","后区"],
-    };
-    var names = MAPS[lotType] || positions.map(function(p, i) { return "第" + (i+1) + "位"; });
+    var names = POSITION_NAMES[lotType] || positions.map(function(p, i) { return "第" + (i+1) + "位"; });
     return positions.map(function(p, i) { return names[i] || p; });
 }
 
 // 单个位置名映射：用于散点图/LLN图标题替换"第X位"
 function buildPosName(index, lotType) {
-    var MAPS = {
-        lottery_dlt: ["前区1","前区2","前区3","前区4","前区5","后区1","后区2"],
-        lottery_ssq: ["红球1","红球2","红球3","红球4","红球5","红球6","蓝球"],
-        lottery_pl3: ["百位","十位","个位"],
-        lottery_pl5: ["万位","千位","百位","十位","个位"],
-        lottery_7xc: ["前1","前2","前3","前4","前5","前6","后区"],
-    };
-    var names = MAPS[lotType];
+    var names = POSITION_NAMES[lotType];
     if (names && index < names.length) return names[index];
     return "第" + (index + 1) + "位";
 }
@@ -863,11 +861,11 @@ async function loadTrendCharts() {
     function makeDataZoom(recs) {
         var total = recs.length;
         if (total === 0) return [];
-        // 默认显示最近 100 期（如果数据不足则全部显示），同时确保窗口能扩到全量，避免右边空一大截
+        // 默认显示最近 100 期（如果数据不足则全部显示）
         var window = Math.min(100, total);
         var sv = Math.max(0, total - window);
-        // maxValueSpan 不能超过 total，否则右侧会留空
-        var maxSpan = Math.max(20, total);
+        // 滑块范围：最小 20 期，最大 200 期（避免一次加载过多期数）
+        var maxSpan = Math.min(200, total);
         return [
             { type: "slider", startValue: sv, endValue: total - 1, minValueSpan: 20, maxValueSpan: maxSpan, height: 20, bottom: 6 },
             { type: "inside", minValueSpan: 20, maxValueSpan: maxSpan },
@@ -1036,115 +1034,7 @@ function loadAdvLLN(container, dateParams) {
     }).catch(function(){container.innerHTML='<div class="empty-state"><div class="empty-text">网络错误</div></div>';});
 }
 
-// 正态分布：适配后端新结构
-// loadAdvNormal 已下线（2026-06-07 暂时移除正态分布功能）
-function loadAdvNormal(container, dateParams) {
-  var prefix = "/" + currentType;
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div><div>加载中...</div></div>';
-  fetch(API_BASE + prefix + "/stats/advanced/normal" + (dateParams || ""))
-    .then(function (r) { return r.json(); })
-    .then(function (json) {
-      var data = json.data;
-      console.log("[normal] response:", data);
-      // 不支持的彩种：data.type === null
-      if (!data || !data.type) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-text">该彩种暂不支持正态分布分析（仅大乐透/双色球）</div></div>';
-        return;
-      }
-      // 容错：兼容后端可能返回 bins 或 numbers
-      var numbers = (data.histogram && (data.histogram.numbers || data.histogram.bins)) || [];
-      var counts  = (data.histogram && data.histogram.counts) || [];
-      // 当 type 有值但无任何号码数据时
-      if (!numbers.length || !counts.length) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-text">暂无数据（期数=' + (data.total_periods || 0) + '）</div></div>';
-        return;
-      }
-
-      container.innerHTML = "";
-      var wrap = document.createElement("div");
-      wrap.style.cssText = "width:100%;min-height:320px;margin-bottom:16px;";
-      var cid = "adv-normal-" + data.type.replace(/[^a-z0-9]/gi, "");
-      wrap.id = cid; container.appendChild(wrap);
-      var chart = initChart(wrap); chartInstances[cid] = chart;
-
-      // 理论参考线：均值 + ±1σ/±2σ（四条水平线）
-      // 后端的 theoretical_curve.{x,y} 是 PDF 曲线（坐标系不匹配号码-频次图），改用水平参考线
-      var ef = data.expected_freq, es = data.expected_std;
-      var maxX = numbers.length;
-
-      // 标题：type → 中文名
-      var titleMap = {
-        dlt_front: "大乐透前区号码正态分布",
-        ssq_red:   "双色球红球正态分布",
-      };
-      var titleText = titleMap[data.type] || ("正态分布 " + data.type);
-
-      // X 轴名按号码数量决定是否旋转
-      var normalNames = buildAxisNameOptions("号码", "频次", { rotate: numbers.length > 20 });
-
-      // 注解
-      var ann = "期望频次=" + data.expected_freq
-              + "  期望σ=" + data.expected_std
-              + "  偏度=" + data.skewness
-              + "  峰度=" + data.kurtosis
-              + "  期数=" + data.total_periods
-              + "  开奖数=" + data.total_draws;
-
-      chart.setOption({
-        title: { text: titleText, left: "center", textStyle: { fontSize: 13 } },
-        tooltip: { trigger: "axis" },
-        grid: { left: 60, right: 28, top: 35, bottom: numbers.length > 20 ? 90 : 70, containLabel: true },
-        xAxis: Object.assign({
-          type: "category",
-          data: numbers.map(String),
-          axisLabel: { rotate: numbers.length > 20 ? 45 : 0, fontSize: 10, interval: autoInterval(numbers.length), hideOverlap: true }
-        }, normalNames.xAxis || {}),
-        yAxis: Object.assign({ type: "value" }, normalNames.yAxis || {}),
-        series: [
-          {
-            name: "实际频次",
-            type: "bar",
-            data: counts,
-            barWidth: "60%",
-            itemStyle: { color: themeColor("rgba(88,166,255,0.55)", "rgba(9,105,218,0.45)") }
-          },
-          {
-            // 理论均值（水平线）—— 跨整个号码范围
-            name: "期望频次",
-            type: "line",
-            data: [[0, ef], [maxX - 1, ef]],
-            lineStyle: { color: themeColor("#f85149", "#cf222e"), width: 2, type: "dashed" },
-            symbol: "none",
-            markLine: { silent: true, symbol: "none" }
-          },
-          {
-            // ±1σ 区间（水平线）—— 浅红虚线
-            name: "±1σ",
-            type: "line",
-            data: [[0, ef - es], [maxX - 1, ef - es]],
-            lineStyle: { color: themeColor("rgba(248,81,73,0.5)", "rgba(207,34,46,0.5)"), width: 1, type: "dotted" },
-            symbol: "none"
-          },
-          {
-            name: "+1σ",
-            type: "line",
-            data: [[0, ef + es], [maxX - 1, ef + es]],
-            lineStyle: { color: themeColor("rgba(248,81,73,0.5)", "rgba(207,34,46,0.5)"), width: 1, type: "dotted" },
-            symbol: "none"
-          }
-        ],
-        graphic: [
-          {
-            type: "text", left: "center", bottom: numbers.length > 20 ? 4 : 8,
-            style: { text: ann, fontSize: 11, fill: themeColor("#b0b8c4", "#57606a") }
-          }
-        ]
-      });
-    })
-    .catch(function () {
-      container.innerHTML = '<div class="empty-state"><div class="empty-text">网络错误</div></div>';
-    });
-}
+// loadAdvNormal 已于 Phase 12 下线（正态分布功能移除，后端路由已删除）
 
 // ========== 图表渲染工具 ==========
 

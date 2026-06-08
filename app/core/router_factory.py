@@ -2,14 +2,11 @@
 """路由工厂：根据 LotteryConfig 自动生成完整的 APIRouter"""
 
 import importlib
-import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from fastapi import APIRouter, Query
 from app.core.database import db
 from app.services.base_stats import base_stats
 from app.services.advanced_stats import std_dev_stats, percentile_stats, scatter_data, lln_data
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass

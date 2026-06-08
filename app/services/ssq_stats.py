@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """双色球 扩展统计（4项）- numpy 加速版"""
 
-import logging
 import numpy as np
 from app.core.database import db
 from app.core.numpy_utils import records_to_array
-
-logger = logging.getLogger(__name__)
 
 RED_FIELDS = ["red_1", "red_2", "red_3", "red_4", "red_5", "red_6"]
 BIG_THRESHOLD = 17

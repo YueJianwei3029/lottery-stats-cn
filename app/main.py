@@ -26,7 +26,11 @@ async def lifespan(app: FastAPI):
     """应用生命周期：启动时初始化，关闭时清理"""
     logger.info("=" * 50)
     logger.info("[App] 彩票数据统计与可视化系统 启动中...")
-    # 初始化数据库
+    # 数据库密码校验
+    from app.core.config import DB_CONFIG
+    if not DB_CONFIG["password"]:
+        logger.warning("[App] DB_PASSWORD 未设置，将使用空密码连接数据库")
+    # 初始化数据库（INIT_MODE 环境变量控制 rebuild/ensure）
     db.init_database()
     # 启动定时采集
     start_scheduler()
@@ -45,10 +49,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS（允许前端跨域）
+# CORS（生产环境通过环境变量 CORS_ORIGINS 限制，开发环境默认 *）
+_cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in _cors_origins if o.strip()] or ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

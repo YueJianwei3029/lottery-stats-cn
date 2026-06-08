@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """通用统计模块：号码频率、奇偶、大小（5 个彩种通用）- numpy 加速版"""
 
-import logging
 import numpy as np
 from app.core.database import db
 from app.core.numpy_utils import records_to_array
-
-logger = logging.getLogger(__name__)
 
 # ============================================================
 # 各表号码字段映射与大小中位数

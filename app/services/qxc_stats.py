@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """七星彩 扩展统计（2020年新规则：前区6位0-9 + 后区1位0-14）- numpy 加速版"""
 
-import logging
 import numpy as np
 from app.core.database import db
 from app.core.numpy_utils import records_to_array
-
-logger = logging.getLogger(__name__)
 
 FRONT_FIELDS = ["num_1", "num_2", "num_3", "num_4", "num_5", "num_6"]
 BACK_FIELD = "back_1"

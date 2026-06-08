@@ -17,6 +17,6 @@ def records_to_array(records, fields):
     """
     data = []
     for r in records:
-        row = [r.get(f) if r.get(f) is not None else np.nan for f in fields]
+        row = [v if (v := r.get(f)) is not None else np.nan for f in fields]
         data.append(row)
     return np.array(data, dtype=float)

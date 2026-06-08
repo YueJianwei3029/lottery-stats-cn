@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """超级大乐透 扩展统计（4项）- numpy 加速版"""
 
-import logging
 import numpy as np
 from app.core.database import db
 from app.core.numpy_utils import records_to_array
-
-logger = logging.getLogger(__name__)
 
 FRONT_FIELDS = ["front_1", "front_2", "front_3", "front_4", "front_5"]
 BACK_FIELDS = ["back_1", "back_2"]
