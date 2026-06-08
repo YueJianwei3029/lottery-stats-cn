@@ -4,6 +4,19 @@
 import os
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# 自动加载 .env（本地开发用，Docker 有环境变量时不受影响）
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.exists():
+    with open(_env_file, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                _k, _v = _k.strip(), _v.strip().strip('"').strip("'")
+                if _k not in os.environ:
+                    os.environ[_k] = _v
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
